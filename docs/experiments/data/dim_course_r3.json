@@ -1,0 +1,31 @@
+{
+  "frames": 599,
+  "fps": 15.0,
+  "proc_ms_mean": 0.37,
+  "zone_mean": [
+    0.968,
+    0.969,
+    0.969
+  ],
+  "zone_min": [
+    0.134,
+    0.212,
+    0.291
+  ],
+  "cmd_msgs": 400,
+  "cmd_changes": 4,
+  "stop_ratio": 0.0,
+  "max_abs_angular": 0.5,
+  "distance_m": 5.12,
+  "final_pose": [
+    3.68,
+    -0.0,
+    -0.14
+  ],
+  "collisions": 0,
+  "collision_events": [],
+  "max_image_gap_s": 0.08,
+  "scene": "dim_course",
+  "run": 3,
+  "duration_s": 40.0
+}

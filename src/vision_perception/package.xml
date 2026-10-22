@@ -1,0 +1,24 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>vision_perception</name>
+  <version>1.0.0</version>
+  <description>单目 RGB 可通行区域感知、避障决策与安全控制一体化节点（v1.0）</description>
+  <maintainer email="2700411138@qq.com">ranmengjia</maintainer>
+  <license>MIT</license>
+
+  <exec_depend>rclpy</exec_depend>
+  <exec_depend>sensor_msgs</exec_depend>
+  <exec_depend>geometry_msgs</exec_depend>
+  <exec_depend>cv_bridge</exec_depend>
+  <exec_depend>python3-opencv</exec_depend>
+  <exec_depend>python3-numpy</exec_depend>
+
+  <test_depend>ament_copyright</test_depend>
+  <test_depend>ament_flake8</test_depend>
+  <test_depend>ament_pep257</test_depend>
+  <test_depend>python3-pytest</test_depend>
+
+  <export>
+    <build_type>ament_python</build_type>
+  </export>
+</package>

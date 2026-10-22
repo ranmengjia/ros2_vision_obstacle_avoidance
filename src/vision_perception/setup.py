@@ -14,6 +14,8 @@ setup(
         ('share/' + package_name + '/param', ['param/perception.yaml']),
     ],
     install_requires=['setuptools'],
+    tests_require=['pytest'],
+
     zip_safe=True,
     maintainer='ranmengjia',
     maintainer_email='2700411138@qq.com',

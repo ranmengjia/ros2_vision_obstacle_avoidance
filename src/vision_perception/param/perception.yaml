@@ -1,0 +1,13 @@
+perception_node:
+  ros__parameters:
+    image_topic: /camera/image_raw
+    log_period_frames: 30
+    gray_threshold: 150
+    roi_bottom_ratio: 0.4
+    clear_threshold: 0.7
+    stop_threshold: 0.3
+    hysteresis_margin: 0.2
+    linear_speed: 0.2
+    turn_linear_speed: 0.05
+    turn_angular_speed: 0.5
+    safety_timeout: 1.0

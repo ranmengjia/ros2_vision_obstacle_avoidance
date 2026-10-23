@@ -130,12 +130,16 @@ def smooth_step(target, current, max_delta):
 
 
 def decide_command(scores, turn_dir, prev_action, clear_threshold, stop_threshold,
-                   hysteresis_margin, straight_exit_margin, stop_exit_margin):
+                   hysteresis_margin, straight_exit_margin, stop_exit_margin,
+                   sector_dists=None, side_guard_distance=0.25):
     """三分评分 → 动作决策（带滞回）。
 
     scores: (左, 中, 右) 可通行率（已融合雷达闸门）
     turn_dir: 转向记忆，+1=左转, -1=右转, 0=未转向
     prev_action: 上一拍动作（直行/停车退出滞回用，首次为 None）
+    sector_dists: (左, 中, 右) 雷达扇区最小距离（可选，用于死锁逃逸与侧身护卫）
+    side_guard_distance: 侧身护卫距离（米）。直行时若任一侧雷达距离小于此值，
+        视为贴障过近，禁止直行（否则会擦着障碍边缘走，最终卡死在角落）
     返回 (action, new_turn_dir)，action ∈ straight/left/right/stop
     """
     left, center, right = scores
@@ -147,18 +151,39 @@ def decide_command(scores, turn_dir, prev_action, clear_threshold, stop_threshol
     if prev_action == 'stop':
         stop_line = stop_threshold + stop_exit_margin
 
+    # 侧身护卫：中路通畅但侧面贴障时不允许直行。
+    # 雷达距离 inf/无数据视为通畅（不干预纯视觉场景）。
+    side_clear = True
+    if sector_dists is not None:
+        for d in (sector_dists[0], sector_dists[2]):
+            if math.isfinite(d) and d < side_guard_distance:
+                side_clear = False
+                break
+
     # 优先级 1：中路畅通 → 直行，清除转向记忆。
     # 双阈值滞回：进入直行要 >= clear_threshold；已在直行时只要
     # >= 退出阈值就保持，避免可通行率在临界值附近波动时
     # 直行/转向来回抽搐。
     straight_exit = clear_threshold - straight_exit_margin
-    if (prev_action == 'straight' and center >= straight_exit) \
-            or center >= clear_threshold:
+    if side_clear and (
+            (prev_action == 'straight' and center >= straight_exit)
+            or center >= clear_threshold):
         return 'straight', 0
 
-    # 优先级 2：三路全堵 → 停车（无安全方向）
+    # 优先级 2：三路全堵 → 停车（无安全方向）。
+    # 例外：若三路是被雷达闸门堵死（正前方障碍物占满整个雷达视野），
+    # 停车等于死锁——原地朝雷达距离更远的一侧自转，转出通路。
+    # 平局默认左（保证确定性）。视觉堵死（雷达无数据）仍停车。
     if (left < stop_line and center < stop_line
             and right < stop_line):
+        if sector_dists is not None:
+            ld, rd = sector_dists[0], sector_dists[2]
+            if math.isfinite(ld) or math.isfinite(rd):
+                lval = ld if math.isfinite(ld) else float('inf')
+                rval = rd if math.isfinite(rd) else float('inf')
+                if lval >= rval:
+                    return 'left', 1
+                return 'right', -1
         return 'stop', 0
 
     # 优先级 3：正在转的方向被堵死、另一侧还行 → 直接换边（安全优先于滞回）
@@ -199,11 +224,13 @@ class PerceptionNode(Node):
 
         # ===== 雷达参数（v2.0 新增）=====
         self.declare_parameter('scan_topic', '/scan')
-        self.declare_parameter('safety_distance', 0.3)
+        self.declare_parameter('safety_distance', 0.5)
+        self.declare_parameter('side_guard_distance', 0.25)
         self.declare_parameter('scan_fov_deg', 60.0)
         self.declare_parameter('scan_timeout', 1.0)
         self.scan_topic = self.get_parameter('scan_topic').value
         self.safety_distance = self.get_parameter('safety_distance').value
+        self.side_guard_distance = self.get_parameter('side_guard_distance').value
         self.scan_fov_deg = self.get_parameter('scan_fov_deg').value
         self.scan_timeout = self.get_parameter('scan_timeout').value
 
@@ -381,7 +408,9 @@ class PerceptionNode(Node):
             self.last_scores, self.turn_dir, self.prev_action,
             self.clear_threshold, self.stop_threshold,
             self.hysteresis_margin, self.straight_exit_margin,
-            self.stop_exit_margin)
+            self.stop_exit_margin,
+            sector_dists=self.last_sector_dists,
+            side_guard_distance=self.side_guard_distance)
         self.prev_action = action
 
         if action == 'straight':

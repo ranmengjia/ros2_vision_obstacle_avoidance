@@ -62,10 +62,11 @@ def test_scores_are_three_floats_in_range():
 
 # ========== decide_command：决策优先级与滞回 ==========
 
-def decide(scores, turn_dir=0, prev_action=None):
+def decide(scores, turn_dir=0, prev_action=None, sector_dists=None):
     """测试内的小包装，省去每次传六个阈值。"""
     return decide_command(scores, turn_dir, prev_action,
-                          CLEAR, STOP, MARGIN, EXIT_MARGIN, STOP_EXIT_MARGIN)
+                          CLEAR, STOP, MARGIN, EXIT_MARGIN, STOP_EXIT_MARGIN,
+                          sector_dists=sector_dists)
 
 def test_center_clear_goes_straight():
     action, turn = decide((0.2, 0.9, 0.2))
@@ -74,6 +75,50 @@ def test_center_clear_goes_straight():
 def test_all_blocked_stops():
     action, turn = decide((0.1, 0.1, 0.1), turn_dir=1)
     assert (action, turn) == ('stop', 0)
+
+def test_lidar_blocked_deadlock_escapes_left_on_tie():
+    """三路全被雷达闸门堵死且左右距离相等 → 原地左转逃逸（确定性）。"""
+    action, turn = decide((0.0, 0.0, 0.0), sector_dists=(0.46, 0.46, 0.46))
+    assert (action, turn) == ('left', 1)
+
+def test_lidar_blocked_deadlock_escapes_toward_farther_side():
+    """三路全堵但右侧雷达距离更远 → 原地右转逃逸。"""
+    action, turn = decide((0.0, 0.0, 0.0), sector_dists=(0.20, 0.30, 0.45))
+    assert (action, turn) == ('right', -1)
+
+def test_all_blocked_without_sector_dists_still_stops():
+    """没传雷达距离（雷达无数据）→ 保持停车，不逃逸。"""
+    action, turn = decide((0.1, 0.1, 0.1), sector_dists=None)
+    assert (action, turn) == ('stop', 0)
+
+def test_all_blocked_with_all_inf_dists_still_stops():
+    """三路全堵但雷达三扇区全 inf（视觉堵死，非雷达闸门）→ 停车。"""
+    inf = float('inf')
+    action, turn = decide((0.1, 0.1, 0.1), sector_dists=(inf, inf, inf))
+    assert (action, turn) == ('stop', 0)
+
+# ========== 侧身护卫：直行时侧面贴障禁止直行 ==========
+
+def test_side_guard_blocks_straight_when_side_too_close():
+    """中路通畅但左侧 0.16m（< 护卫距离）→ 禁止直行，转向空旷的右侧。"""
+    action, turn = decide((0.0, 1.0, 1.0), sector_dists=(0.16, 0.42, 4.0))
+    assert (action, turn) == ('right', -1)
+
+def test_side_guard_allows_straight_when_sides_clear():
+    """两侧距离充足 → 正常直行。"""
+    action, turn = decide((0.0, 1.0, 1.0), sector_dists=(1.0, 1.0, 1.0))
+    assert (action, turn) == ('straight', 0)
+
+def test_side_guard_ignores_inf_and_no_data():
+    """侧面 inf 视为通畅，不传雷达距离时护卫不生效。"""
+    inf = float('inf')
+    assert decide((0.0, 1.0, 1.0), sector_dists=(inf, 0.4, inf)) == ('straight', 0)
+    assert decide((0.0, 1.0, 1.0)) == ('straight', 0)
+
+def test_side_guard_both_sides_close_turns_to_farther():
+    """两侧都贴障且评分相同 → 平局默认左转（确定性），随后由雷达距离主导换边。"""
+    action, turn = decide((0.5, 1.0, 0.5), sector_dists=(0.20, 1.0, 0.22))
+    assert (action, turn) == ('left', 1)
 
 def test_first_decision_picks_higher_side():
     assert decide((0.6, 0.5, 0.2)) == ('left', 1)

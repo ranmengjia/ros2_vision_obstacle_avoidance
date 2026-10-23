@@ -1,19 +1,21 @@
-"""v1.1 视觉感知节点：斜坡平滑 + 直行滞回 + FPS/延迟统计。"""
+"""v2.0 融合感知节点：视觉三分评分 + 激光雷达安全闸门 + 斜坡平滑 + 滞回。"""
+import math
 import time
 
 import rclpy
 from rclpy.node import Node
 from rclpy.time import Time
-from sensor_msgs.msg import Image
+from sensor_msgs.msg import Image, LaserScan
 from cv_bridge import CvBridge, CvBridgeError
 import cv2
 import numpy as np
 from geometry_msgs.msg import Twist
 
+
 def compute_zone_scores(bgr_img, gray_threshold, roi_bottom_ratio):
     """输入 BGR 图像，返回 (左, 中, 右) 三个区域的可通行率（0~1）。
 
-    纯函数：不依赖 ROS，方便步骤 4 用 pytest 直接测试。
+    纯函数：不依赖 ROS，方便 pytest 直接测试。
     """
     h, w = bgr_img.shape[:2]
 
@@ -34,6 +36,67 @@ def compute_zone_scores(bgr_img, gray_threshold, roi_bottom_ratio):
     # 5) 白像素占比 = 该区域可通行率
     return tuple(float(np.count_nonzero(z)) / z.size for z in zones)
 
+
+def sector_min_distances(ranges, angle_min, angle_increment, fov_deg=60.0):
+    """LaserScan 的 ranges 数组 → 三扇区最小距离 (左, 中, 右)。
+
+    纯函数：不依赖 ROS。
+    雷达是 360° 全向扫描，但视觉只有前方 fov_deg°（默认 60°，与相机 FOV 对齐）。
+    在这 ±fov/2 范围内再均分成左/中/右三个扇区，每个扇区取最小距离。
+
+    ranges: list/ndarray of float, 长度 N
+    angle_min: 第一根射线的角度（弧度）
+    angle_increment: 相邻射线的角度步进（弧度）
+    fov_deg: 需要映射的前方扇形角度（度），默认 60°
+    返回: (left_min, center_min, right_min) 三扇区最小距离（inf 表示无障碍）
+    """
+    n = len(ranges)
+    half_fov_rad = math.radians(fov_deg / 2.0)  # 默认 ±30°
+
+    # 三扇区边界：在 ±half_fov_rad 内均分成 3 份
+    # 左: -half_fov ~ -half_fov/3  中: -half_fov/3 ~ +half_fov/3  右: +half_fov/3 ~ +half_fov
+    sector_edges = (-half_fov_rad,
+                    -half_fov_rad / 3.0,
+                    +half_fov_rad / 3.0,
+                    +half_fov_rad)
+
+    result = []
+    for k in range(3):
+        lo, hi = sector_edges[k], sector_edges[k + 1]
+        lo_idx = max(0, int(math.floor((lo - angle_min) / angle_increment)))
+        hi_idx = min(n - 1, int(math.floor((hi - angle_min) / angle_increment)))
+        if lo_idx > hi_idx:
+            result.append(float('inf'))
+            continue
+        vals = [ranges[i] for i in range(lo_idx, hi_idx + 1)
+                if math.isfinite(ranges[i])
+                and ranges[i] > 0.0]
+        result.append(min(vals) if vals else float('inf'))
+
+    return tuple(result)
+
+
+def fuse_scores(zone_scores, sector_dists, safety_distance):
+    """视觉可通行率 + 雷达最小距离 → 融合后可通行率。
+
+    纯函数：不依赖 ROS。
+    雷达安全闸门：某扇区 min_distance < safety_distance → 视觉对应分区强制 0。
+    这样视觉给出"远距离可通行率"，雷达给出"近距离硬约束"，互补。
+
+    zone_scores: (左, 中, 右) 视觉可通行率 0~1
+    sector_dists: (左, 中, 右) 雷达最小距离（米），inf 表示无障碍
+    safety_distance: 安全距离阈值（米），雷达距离 < 此值则强制不可通行
+    返回: (左, 中, 右) 融合后可通行率
+    """
+    fused = []
+    for score, dist in zip(zone_scores, sector_dists):
+        if math.isfinite(dist) and dist < safety_distance:
+            fused.append(0.0)   # 雷达闸门：近距离硬墙
+        else:
+            fused.append(score)  # 视觉主导
+    return tuple(fused)
+
+
 def smooth_step(target, current, max_delta):
     """把 current 向 target 逼近一步，单步变化量不超过 max_delta（斜坡限幅）。
 
@@ -46,11 +109,12 @@ def smooth_step(target, current, max_delta):
         return current - max_delta
     return target
 
+
 def decide_command(scores, turn_dir, prev_action, clear_threshold, stop_threshold,
                    hysteresis_margin, straight_exit_margin, stop_exit_margin):
     """三分评分 → 动作决策（带滞回）。
 
-    scores: (左, 中, 右) 可通行率
+    scores: (左, 中, 右) 可通行率（已融合雷达闸门）
     turn_dir: 转向记忆，+1=左转, -1=右转, 0=未转向
     prev_action: 上一拍动作（直行/停车退出滞回用，首次为 None）
     返回 (action, new_turn_dir)，action ∈ straight/left/right/stop
@@ -99,32 +163,32 @@ def decide_command(scores, turn_dir, prev_action, clear_threshold, stop_threshol
         return 'left', 1
     return 'right', -1
 
+
 class PerceptionNode(Node):
     def __init__(self):
         super().__init__('perception_node')
 
-        # 参数集中声明，launch/yaml 可覆盖
+        # ===== 视觉参数 =====
         self.declare_parameter('image_topic', '/camera/image_raw')
         self.declare_parameter('log_period_frames', 30)
-
         self.declare_parameter('gray_threshold', 150)
         self.declare_parameter('roi_bottom_ratio', 0.4)
+        self.image_topic = self.get_parameter('image_topic').value
+        self.log_period = self.get_parameter('log_period_frames').value
         self.gray_threshold = self.get_parameter('gray_threshold').value
         self.roi_bottom_ratio = self.get_parameter('roi_bottom_ratio').value
 
-        self.image_topic = self.get_parameter('image_topic').value
-        self.log_period = self.get_parameter('log_period_frames').value
+        # ===== 雷达参数（v2.0 新增）=====
+        self.declare_parameter('scan_topic', '/scan')
+        self.declare_parameter('safety_distance', 0.3)
+        self.declare_parameter('scan_fov_deg', 60.0)
+        self.declare_parameter('scan_timeout', 1.0)
+        self.scan_topic = self.get_parameter('scan_topic').value
+        self.safety_distance = self.get_parameter('safety_distance').value
+        self.scan_fov_deg = self.get_parameter('scan_fov_deg').value
+        self.scan_timeout = self.get_parameter('scan_timeout').value
 
-        self.bridge = CvBridge()
-        self.frame_count = 0
-        self.error_count = 0
-
-        self.sub = self.create_subscription(
-            Image, self.image_topic, self.image_callback, 10)
-
-        self.get_logger().info(f'已订阅 {self.image_topic}，等待图像...')
-
-        # 决策参数
+        # ===== 决策参数 =====
         self.declare_parameter('clear_threshold', 0.7)
         self.declare_parameter('stop_threshold', 0.3)
         self.declare_parameter('hysteresis_margin', 0.2)
@@ -135,7 +199,6 @@ class PerceptionNode(Node):
         self.declare_parameter('turn_angular_speed', 0.5)
         self.declare_parameter('max_angular_accel', 2.0)
         self.declare_parameter('safety_timeout', 1.0)
-
         self.clear_threshold = self.get_parameter('clear_threshold').value
         self.stop_threshold = self.get_parameter('stop_threshold').value
         self.hysteresis_margin = self.get_parameter('hysteresis_margin').value
@@ -147,34 +210,53 @@ class PerceptionNode(Node):
         self.max_angular_accel = self.get_parameter('max_angular_accel').value
         self.safety_timeout = self.get_parameter('safety_timeout').value
 
-        # 控制状态
-        self.turn_dir = 0            # 滞回记忆：+1 左, -1 右, 0 无
-        self.prev_action = None      # 上一拍动作（直行退出滞回用）
-        self.current_angular_z = 0.0  # 平滑后的当前角速度
-        self.last_scores = None      # 最近有效帧的三分
-        self.last_image_time = None  # 最近有效帧的到达时间
-        self.stopped_by_watchdog = False
+        # ===== ROS 通信 =====
+        self.bridge = CvBridge()
+        self.frame_count = 0
+        self.error_count = 0
 
-        # FPS / 端到端延迟统计（每个日志周期重置一次窗口）
-        self.fps_frames = 0
-        self.latency_sum = 0.0
-        self.processing_sum = 0.0
-        self.fps_window_start = None
+        # 视觉订阅
+        self.sub = self.create_subscription(
+            Image, self.image_topic, self.image_callback, 10)
+        self.get_logger().info(f'已订阅 {self.image_topic}，等待图像...')
+
+        # 雷达订阅（v2.0 新增）
+        self.scan_sub = self.create_subscription(
+            LaserScan, self.scan_topic, self.scan_callback, 10)
+        self.get_logger().info(
+            f'已订阅 {self.scan_topic}，安全距离 {self.safety_distance}m...')
 
         # /cmd_vel 发布者 + 10 Hz 控制定时器
         self.control_period = 0.1
         self.cmd_pub = self.create_publisher(Twist, '/cmd_vel', 10)
         self.ctrl_timer = self.create_timer(self.control_period, self.control_loop)
 
+        # ===== 控制状态 =====
+        self.turn_dir = 0
+        self.prev_action = None
+        self.current_angular_z = 0.0
+        self.last_scores = None       # 最近融合后三分
+        self.last_sector_dists = None # 最近雷达三扇区最小距离（用于日志）
+        self.last_image_time = None
+        self.last_scan_time = None    # 最近有效 scan 到达时间
+        self.stopped_by_watchdog = False
+
+        # FPS / 延迟统计
+        self.fps_frames = 0
+        self.latency_sum = 0.0
+        self.processing_sum = 0.0
+        self.fps_window_start = None
+
+    # ------------------------------------------------------------------ #
+    # 图像回调                                                            #
+    # ------------------------------------------------------------------ #
     def image_callback(self, msg: Image):
         cb_start = time.perf_counter()
-        # 第 1 层：空图像检查
         if not msg.data:
             self.error_count += 1
             self.get_logger().warn('收到空图像帧')
             return
 
-        # 第 2 层：编码转换（异常编码抛 CvBridgeError）
         try:
             cv_img = self.bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
         except CvBridgeError as e:
@@ -182,7 +264,6 @@ class PerceptionNode(Node):
             self.get_logger().warn(f'图像转换失败: {e}')
             return
 
-        # 第 3 层：尺寸检查
         if cv_img.shape[0] == 0 or cv_img.shape[1] == 0:
             self.error_count += 1
             self.get_logger().warn('图像尺寸为零')
@@ -190,18 +271,21 @@ class PerceptionNode(Node):
 
         now = self.get_clock().now()
 
-        scores = compute_zone_scores(
+        # 视觉纯函数：三分可通行率
+        vision_scores = compute_zone_scores(
             cv_img, self.gray_threshold, self.roi_bottom_ratio)
 
+        # 如果已有雷达数据，做融合；否则直接用视觉评分（降级行为）
+        if self.last_sector_dists is not None:
+            self.last_scores = fuse_scores(
+                vision_scores, self.last_sector_dists, self.safety_distance)
+        else:
+            self.last_scores = vision_scores
+
         self.frame_count += 1
-        self.last_scores = scores
         self.last_image_time = now
 
-        # FPS / 端到端延迟统计：延迟 = 图像时间戳 → 处理完成。
-        # msg.header.stamp 是 builtin_interfaces/Time，与 rclpy 的 Time
-        # 不是同一个类、不能直接相减，先转换再取纳秒差。
-        # Gazebo 的 /clock 到达节点存在数十毫秒滞后，相机 stamp 可能
-        # 比节点当前时钟更"新"，此时差值为负——按 0 处理，避免统计失真。
+        # FPS / 延迟统计
         stamp = Time.from_msg(msg.header.stamp)
         latency = (now.nanoseconds - stamp.nanoseconds) / 1e9
         self.latency_sum += max(0.0, latency)
@@ -216,36 +300,64 @@ class PerceptionNode(Node):
             avg_latency_ms = self.latency_sum / self.fps_frames * 1000
             avg_proc_ms = self.processing_sum / self.fps_frames
             h, w = cv_img.shape[:2]
+            dist_str = ('雷达 左={:.2f} 中={:.2f} 右={:.2f}'
+                        .format(*(self.last_sector_dists or (0, 0, 0))))
             self.get_logger().info(
                 f'第 {self.frame_count} 帧 ({w}x{h}) 异常 {self.error_count} | '
-                f'可通行率 左={scores[0]:.2f} 中={scores[1]:.2f} 右={scores[2]:.2f} | '
-                f'FPS={fps:.1f} 端到端延迟={avg_latency_ms:.0f}ms 处理耗时={avg_proc_ms:.1f}ms')
-            # 重置统计窗口
+                f'融合后 左={self.last_scores[0]:.2f} 中={self.last_scores[1]:.2f} 右={self.last_scores[2]:.2f} | '
+                f'{dist_str} | '
+                f'FPS={fps:.1f} 延迟={avg_latency_ms:.0f}ms 耗时={avg_proc_ms:.1f}ms')
             self.fps_frames = 0
             self.latency_sum = 0.0
             self.processing_sum = 0.0
             self.fps_window_start = now
 
+    # ------------------------------------------------------------------ #
+    # 雷达回调（v2.0 新增）                                               #
+    # ------------------------------------------------------------------ #
+    def scan_callback(self, msg: LaserScan):
+        if not msg.ranges:
+            self.get_logger().warn('收到空 scan 帧')
+            return
+        self.last_sector_dists = sector_min_distances(
+            msg.ranges, msg.angle_min, msg.angle_increment, self.scan_fov_deg)
+        self.last_scan_time = self.get_clock().now()
+
+    # ------------------------------------------------------------------ #
+    # 10 Hz 控制循环                                                      #
+    # ------------------------------------------------------------------ #
     def control_loop(self):
-        """10 Hz 控制循环：看门狗 + 决策 + 发布。"""
+        """10 Hz 控制循环：双看门狗（图像 + 雷达）+ 决策 + 发布。"""
         twist = Twist()
 
-        # 还没收到过图像：不发任何指令，等第一帧
+        # 还没收到过图像：不发任何指令
         if self.last_image_time is None:
             return
 
-        # 看门狗：图像超时 → 强制停车（持续发全零）
-        age = (self.get_clock().now() - self.last_image_time).nanoseconds / 1e9
-        if age > self.safety_timeout:
+        now = self.get_clock().now()
+
+        # 看门狗 1：图像超时
+        img_age = (now - self.last_image_time).nanoseconds / 1e9
+        scan_age = (float('inf') if self.last_scan_time is None
+                    else (now - self.last_scan_time).nanoseconds / 1e9)
+
+        # 雷达超时也触发安全停车——融合节点不能丢了雷达
+        if img_age > self.safety_timeout or scan_age > self.scan_timeout:
             if not self.stopped_by_watchdog:
-                self.get_logger().warn(f'图像超时 {age:.1f}s，强制停车')
+                reason = []
+                if img_age > self.safety_timeout:
+                    reason.append(f'图像 {img_age:.1f}s')
+                if scan_age > self.scan_timeout:
+                    reason.append(f'雷达 {scan_age:.1f}s')
+                self.get_logger().warn(
+                    f'安全超时: {", ".join(reason)}，强制停车')
                 self.stopped_by_watchdog = True
-            self.current_angular_z = 0.0  # 看门狗立即清零，恢复后从 0 重新起坡
+            self.current_angular_z = 0.0
             self.cmd_pub.publish(twist)
             return
         self.stopped_by_watchdog = False
 
-        # 正常决策
+        # 正常决策（self.last_scores 已在 image_callback 中融合完毕）
         action, self.turn_dir = decide_command(
             self.last_scores, self.turn_dir, self.prev_action,
             self.clear_threshold, self.stop_threshold,
@@ -261,15 +373,14 @@ class PerceptionNode(Node):
         elif action == 'right':
             twist.linear.x = self.turn_linear_speed
             twist.angular.z = -self.turn_angular_speed
-        # 'stop' 时 twist 保持全零
 
-        # 角速度斜坡限幅：目标值跳变 → 实际输出缓坡逼近
         max_delta = self.max_angular_accel * self.control_period
         self.current_angular_z = smooth_step(
             twist.angular.z, self.current_angular_z, max_delta)
         twist.angular.z = self.current_angular_z
 
         self.cmd_pub.publish(twist)
+
 
 def main(args=None):
     rclpy.init(args=args)

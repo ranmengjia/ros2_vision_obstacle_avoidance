@@ -67,7 +67,7 @@
 |---|---|---|---|
 | 9 | 2D 激光雷达 `/scan`（360 点 × 10Hz × ±8.0m） | feat/lidar-sensor | ✅ 完成 |
 | 10 | 视觉 + 雷达融合（安全闸门 + 双看门狗） | feat/sensor-fusion | ✅ 完成 |
-| 11 | 接入 Nav2（可选，依赖重，需确认当前融合避障效果先） | — | 待定 |
+| 11 | 接入 Nav2（静态地图 + AMCL + DWB 导航） | — | ✅ 完成 |
 | 12 | 评估语义分割 / 目标检测是否值得引入 | — | 待定 |
 
 ### v2.0 功能边界
@@ -93,6 +93,25 @@
 |---|---|---|---|
 | `sector_min_distances(ranges, angle_min, angle_increment, fov_deg)` | LaserScan 的参数 | (左, 中, 右) 最小距离 | 360° 全向 → 前方 60° 三扇区 |
 | `fuse_scores(zone_scores, sector_dists, safety_distance)` | 视觉三分 + 雷达三分 + 安全距离 | (左, 中, 右) 融合后 | 雷达闸门：< 0.3m → 0 |
+
+### v2.0 步骤 11：Nav2 接入（已完成）
+
+| 文件 | 作用 |
+|---|---|
+| `src/robot_description/param/nav2_params.yaml` | AMCL / Navfn / DWB / 代价地图参数；坐标系 `base_link`，footprint `0.32×0.26`，限速 0.2m/s、0.8rad/s |
+| `src/robot_description/maps/detour_test_map.yaml` + `.pgm` | 与 `detour_test.world` 对齐的 9m×9m、0.05m/px 静态地图 |
+| `src/robot_description/launch/nav2.launch.py` | Gazebo + Nav2 bringup + RViz 一键启动；Nav2 延迟 5s 等 TF/scan 就绪 |
+
+启动与验证：
+
+```bash
+ros2 launch robot_description nav2.launch.py            # 带 RViz，用 2D Goal Pose 发目标
+ros2 launch robot_description nav2.launch.py use_rviz:=false
+```
+
+- 验收（2026-10-23）：生命周期节点全部 active；从 (-2,0) 导航到 (2,0) 再返回，绕过中心 0.5m 方块，实测最小车体间隙 0.186m，无碰撞。
+- 注意：Nav2 与 `vision_perception` 都会发布 `/cmd_vel`，两个 launch 不能同时启动。
+- 已知：差速底盘静止漂移约 5.5mm/s，AMCL 会持续修正；静止等待越久，初始位姿误差越大。
 
 ## 关键技术决策
 

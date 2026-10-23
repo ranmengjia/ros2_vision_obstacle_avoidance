@@ -1,0 +1,8 @@
+# detour_test.world 的静态栅格地图
+# 9m × 9m，分辨率 0.05m/px，左下角世界坐标 (-4.5, -4.5)
+image: detour_test_map.pgm
+resolution: 0.05
+origin: [-4.5, -4.5, 0.0]
+negate: 0
+occupied_thresh: 0.65
+free_thresh: 0.25

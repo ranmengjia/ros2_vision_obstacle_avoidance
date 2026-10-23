@@ -92,7 +92,16 @@
 | 函数 | 输入 | 输出 | 说明 |
 |---|---|---|---|
 | `sector_min_distances(ranges, angle_min, angle_increment, fov_deg)` | LaserScan 的参数 | (左, 中, 右) 最小距离 | 360° 全向 → 前方 60° 三扇区 |
-| `fuse_scores(zone_scores, sector_dists, safety_distance)` | 视觉三分 + 雷达三分 + 安全距离 | (左, 中, 右) 融合后 | 雷达闸门：< 0.3m → 0 |
+| `fuse_scores(zone_scores, sector_dists, safety_distance)` | 视觉三分 + 雷达三分 + 安全距离 | (左, 中, 右) 融合后 | 雷达闸门：< 0.5m → 0 |
+
+### v2.0 绕行验证（detour_test.world，已完成）
+
+- 障碍物 `detour_box`（0.5m 方块）置于直行路径正中 `(0.5, 0)`。
+- 验收（2026-10-23）：从 (-2,0) 出发绕行方块抵达东侧 (3.7, 0)，全程零碰撞，
+  车体与方块最小间隔 0.10m；50 条单测全绿。
+- 关键教训：相机 0.08m 高 + ROI 底部 40% → 视觉盲区约 0.34m，
+  雷达闸门 `safety_distance` 必须大于盲区（取 0.5m）；
+  仅"中路畅通就直行"会擦障卡死，需 `side_guard_distance`(0.25m) 侧身护卫。
 
 ### v2.0 步骤 11：Nav2 接入（已完成）
 

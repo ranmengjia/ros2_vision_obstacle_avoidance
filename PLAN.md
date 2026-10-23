@@ -68,7 +68,8 @@
 | 9 | 2D 激光雷达 `/scan`（360 点 × 10Hz × ±8.0m） | feat/lidar-sensor | ✅ 完成 |
 | 10 | 视觉 + 雷达融合（安全闸门 + 双看门狗） | feat/sensor-fusion | ✅ 完成 |
 | 11 | 接入 Nav2（静态地图 + AMCL + DWB 导航） | — | ✅ 完成 |
-| 12 | 评估语义分割 / 目标检测是否值得引入 | — | 待定 |
+| 12 | SLAM 在线建图（SLAM Toolbox 替代静态地图 + AMCL） | feat/slam-mapping | ✅ 完成 |
+| 13 | 评估语义分割 / 目标检测是否值得引入 | — | 待定 |
 
 ### v2.0 功能边界
 
@@ -121,6 +122,28 @@ ros2 launch robot_description nav2.launch.py use_rviz:=false
 - 验收（2026-10-23）：生命周期节点全部 active；从 (-2,0) 导航到 (2,0) 再返回，绕过中心 0.5m 方块，实测最小车体间隙 0.186m，无碰撞。
 - 注意：Nav2 与 `vision_perception` 都会发布 `/cmd_vel`，两个 launch 不能同时启动。
 - 已知：差速底盘静止漂移约 5.5mm/s，AMCL 会持续修正；静止等待越久，初始位姿误差越大。
+
+### v2.0 步骤 12：SLAM 在线建图（已完成）
+
+| 文件 | 作用 |
+|---|---|
+| `src/robot_description/param/slam_toolbox.yaml` | SLAM Toolbox online_async 参数；坐标系 `base_link`/`odom`/`map`，量程对齐雷达 8.0m，建图触发距离/转角收紧到 0.2m / 0.2rad |
+| `src/robot_description/launch/slam.launch.py` | Gazebo + SLAM Toolbox（延迟 5s）+ Nav2 纯导航栈 navigation_launch.py（延迟 8s）+ RViz 一键启动 |
+
+启动与验证：
+
+```bash
+ros2 launch robot_description slam.launch.py            # 带 RViz，用 2D Goal Pose 发目标
+ros2 launch robot_description slam.launch.py use_rviz:=false
+```
+
+- 与步骤 11 的区别：不再加载静态地图和 AMCL，`map->odom` TF 与 `/map` 栅格图由
+  SLAM Toolbox 实时发布，world 改动后无需重画地图。
+- 验收（2026-10-23）：导航生命周期全部 active；从 (-2,0) 发 navigate_to_pose (2,0)，
+  绕开中心方块成功到达（终点 (1.94, 0.11)，容差 0.15m）；SLAM 建图覆盖全部四面围墙
+  （±3.95m，与 world 精确对齐）及中心方块轮廓。
+- 保存地图：`ros2 run nav2_map_server map_saver_cli -f <路径> -t /map`，
+  或 SLAM Toolbox 自带的 `/slam_toolbox/save_map` 服务。
 
 ## 关键技术决策
 

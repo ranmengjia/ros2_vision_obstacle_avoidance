@@ -1,0 +1,83 @@
+# SLAM Toolbox 参数（online_async 模式，ROS 2 Humble / Gazebo classic）
+# 基于 /opt/ros/humble/share/slam_toolbox/config/mapper_params_online_async.yaml，
+# 针对本项目机器人和场地修改了 4 处，见下方注释。
+#
+# 原理一句话：SLAM Toolbox 订阅 /scan 和 odom->base_link 的 TF，
+# 用 Ceres 优化器做位姿图优化，实时发布 map->odom 的 TF 和 /map 占据栅格。
+# Nav2 的 global_costmap 因此不再需要预先画好的静态地图。
+
+slam_toolbox:
+  ros__parameters:
+
+    # ---------- 求解器插件（Ceres 非线性优化，保持默认） ----------
+    solver_plugin: solver_plugins::CeresSolver
+    ceres_linear_solver: SPARSE_NORMAL_CHOLESKY
+    ceres_preconditioner: SCHUR_JACOBI
+    ceres_trust_strategy: LEVENBERG_MARQUARDT
+    ceres_dogleg_type: TRADITIONAL_DOGLEG
+    ceres_loss_function: None
+
+    # ---------- 坐标系与话题（本项目适配） ----------
+    odom_frame: odom
+    map_frame: map
+    # 修改点 1：本项目 TF 树没有 base_footprint，机器人主体就是 base_link
+    base_frame: base_link
+    scan_topic: /scan
+    # 开启后可用 /slam_toolbox/save_map 服务直接保存地图
+    use_map_saver: true
+    mode: mapping
+
+    debug_logging: false
+    throttle_scans: 1
+    transform_publish_period: 0.02   # map->odom TF 发布周期（50Hz），0 表示不发
+    map_update_interval: 5.0         # /map 栅格图发布周期（秒）
+    resolution: 0.05                 # 与静态地图一致的 5cm 分辨率
+    min_laser_range: 0.0
+    # 修改点 2：雷达实际量程上限 8.0m（默认 20.0 会把 inf 射线也拿去栅格化）
+    max_laser_range: 8.0
+    minimum_time_interval: 0.5
+    transform_timeout: 0.2
+    tf_buffer_duration: 30.0
+    stack_size_to_use: 40000000      # 序列化大地图需要更大的栈
+    enable_interactive_mode: true
+
+    # ---------- 建图触发条件（本项目适配） ----------
+    # 机器人移动超过该距离/转角才把新扫描纳入建图。
+    # 修改点 3、4：默认 0.5m / 0.5rad 对 9x9m 小场地、0.2m/s 慢速机器人太稀疏，
+    # 减小到 0.2m / 0.2rad 让建图更致密
+    use_scan_matching: true
+    use_scan_barycenter: true
+    minimum_travel_distance: 0.2
+    minimum_travel_heading: 0.2
+    scan_buffer_size: 10
+    scan_buffer_maximum_scan_distance: 10.0
+    link_match_minimum_response_fine: 0.1
+    link_scan_maximum_distance: 1.5
+    loop_search_maximum_distance: 3.0
+    do_loop_closing: true
+    loop_match_minimum_chain_size: 10
+    loop_match_maximum_variance_coarse: 3.0
+    loop_match_minimum_response_coarse: 0.35
+    loop_match_minimum_response_fine: 0.45
+
+    # ---------- 相关性搜索（默认值） ----------
+    correlation_search_space_dimension: 0.5
+    correlation_search_space_resolution: 0.01
+    correlation_search_space_smear_deviation: 0.1
+
+    # ---------- 回环检测搜索（默认值） ----------
+    loop_search_space_dimension: 8.0
+    loop_search_space_resolution: 0.05
+    loop_search_space_smear_deviation: 0.03
+
+    # ---------- 扫描匹配（默认值） ----------
+    distance_variance_penalty: 0.5
+    angle_variance_penalty: 1.0
+    fine_search_angle_offset: 0.00349
+    coarse_search_angle_offset: 0.349
+    coarse_angle_resolution: 0.0349
+    minimum_angle_penalty: 0.9
+    minimum_distance_penalty: 0.5
+    use_response_expansion: true
+    min_pass_through: 2
+    occupancy_threshold: 0.1

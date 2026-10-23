@@ -305,7 +305,9 @@
       <robot_base_frame>base_link</robot_base_frame>
       <publish_odom>true</publish_odom>
       <publish_odom_tf>true</publish_odom_tf>
-      <publish_wheel_tf>true</publish_wheel_tf>
+      <!-- 轮子 TF 由 robot_state_publisher 发布；插件再发一份会让 Nav2 节点
+           持续报 TF_OLD_DATA（Nav2 用不到轮子 TF，关掉可消除刷屏） -->
+      <publish_wheel_tf>false</publish_wheel_tf>
     </plugin>
   </gazebo>
 

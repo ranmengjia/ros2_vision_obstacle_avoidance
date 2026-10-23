@@ -7,6 +7,8 @@ install(DIRECTORY
   urdf
   launch
   worlds
+  param
+  maps
   DESTINATION share/${PROJECT_NAME}
 )
 

@@ -1,4 +1,6 @@
 """v1.1 感知、决策与平滑纯函数的单元测试。"""
+import math
+
 import numpy as np
 import pytest
 
@@ -6,6 +8,8 @@ from vision_perception.perception_node import (
     compute_zone_scores,
     decide_command,
     smooth_step,
+    sector_min_distances,
+    fuse_scores,
 )
 
 W, H = 320, 240
@@ -151,3 +155,171 @@ def test_smooth_step_symmetric_around_zero():
     """正负方向限幅对称。"""
     assert smooth_step(-0.1, 0.0, 0.2) == pytest.approx(-0.1)
     assert smooth_step(0.0, -0.3, 0.2) == pytest.approx(-0.1)
+
+
+# ========== sector_min_distances：雷达三扇区最小距离 ==========
+
+# 仿真环境参数：360 点，1° 步进，-π ~ +π
+SCAN_N = 360
+SCAN_ANGLE_MIN = -math.pi
+SCAN_ANGLE_INC = math.pi / 180.0
+FOV_DEG = 60.0   # 相机 FOV，与雷达前方映射一致
+
+
+def _make_scan(ranges_dict, default=10.0):
+    """构造一个模拟 ranges 数组。
+
+    ranges_dict: {角度(度): 距离}，指定角度设为指定距离，其余用 default。
+    """
+    arr = [default] * SCAN_N
+    for deg, dist in ranges_dict.items():
+        i = int(round((math.radians(deg) - SCAN_ANGLE_MIN) / SCAN_ANGLE_INC))
+        if 0 <= i < SCAN_N:
+            arr[i] = dist
+    return arr
+
+
+def test_no_obstacle_gives_all_inf():
+    """全无障碍时三扇区都是 inf。"""
+    ranges = _make_scan({}, default=float('inf'))
+    left, center, right = sector_min_distances(
+        ranges, SCAN_ANGLE_MIN, SCAN_ANGLE_INC, FOV_DEG)
+    assert left == math.inf
+    assert center == math.inf
+    assert right == math.inf
+
+
+def test_front_obstacle_lands_in_center_sector():
+    """正前方 0° 障碍 → 中扇区距离最小。"""
+    ranges = _make_scan({0: 1.5}, default=float('inf'))
+    left, center, right = sector_min_distances(
+        ranges, SCAN_ANGLE_MIN, SCAN_ANGLE_INC, FOV_DEG)
+    assert center == pytest.approx(1.5)
+    assert left == math.inf
+    assert right == math.inf
+
+
+def test_left_obstacle_lands_in_left_sector():
+    """左前方 -20° 障碍 → 左扇区距离最小。"""
+    ranges = _make_scan({-20: 2.0}, default=float('inf'))
+    left, center, right = sector_min_distances(
+        ranges, SCAN_ANGLE_MIN, SCAN_ANGLE_INC, FOV_DEG)
+    assert left == pytest.approx(2.0)
+    assert center == math.inf
+    assert right == math.inf
+
+
+def test_right_obstacle_lands_in_right_sector():
+    """右前方 +20° 障碍 → 右扇区距离最小。"""
+    ranges = _make_scan({20: 2.0}, default=float('inf'))
+    left, center, right = sector_min_distances(
+        ranges, SCAN_ANGLE_MIN, SCAN_ANGLE_INC, FOV_DEG)
+    assert right == pytest.approx(2.0)
+    assert left == math.inf
+    assert center == math.inf
+
+
+def test_obstacle_outside_fov_ignored():
+    """后向 180° 障碍不在 ±30° 范围内，三扇区全 inf。"""
+    ranges = _make_scan({180: 0.5}, default=float('inf'))
+    left, center, right = sector_min_distances(
+        ranges, SCAN_ANGLE_MIN, SCAN_ANGLE_INC, FOV_DEG)
+    assert left == math.inf
+    assert center == math.inf
+    assert right == math.inf
+
+
+def test_multi_sector_obstacles():
+    """左 -15° 和中 0° 都有障碍 → 两扇区各自记录。"""
+    ranges = _make_scan({-15: 2.5, 0: 1.0}, default=float('inf'))
+    left, center, right = sector_min_distances(
+        ranges, SCAN_ANGLE_MIN, SCAN_ANGLE_INC, FOV_DEG)
+    assert left == pytest.approx(2.5)
+    assert center == pytest.approx(1.0)
+    assert right == math.inf
+
+
+def test_zero_and_negative_and_inf_filtered():
+    """ranges 中的 0 / 负数 / inf 都应该被过滤，不参与 min。"""
+    ranges = _make_scan({}, default=math.inf)  # 先全填 inf
+    ranges[180] = -0.1    # 负数
+    ranges[181] = 0.0     # 零
+    ranges[182] = 1.2     # 有效障碍（0° 附近）
+    left, center, right = sector_min_distances(
+        ranges, SCAN_ANGLE_MIN, SCAN_ANGLE_INC, FOV_DEG)
+    assert center == pytest.approx(1.2)   # 只有 1.2 有效
+    assert left == math.inf
+    assert right == math.inf
+
+
+def test_sector_min_takes_closest_in_range():
+    """一个扇区内多根射线有值时取最小。"""
+    ranges = _make_scan({}, default=float('inf'))
+    # 左扇区（-30 ~ -10°）内放两根障碍射线
+    ranges[150] = 3.0   # -30°
+    ranges[160] = 1.8   # -10°
+    left, center, right = sector_min_distances(
+        ranges, SCAN_ANGLE_MIN, SCAN_ANGLE_INC, FOV_DEG)
+    assert left == pytest.approx(1.8)
+    assert center == math.inf
+    assert right == math.inf
+
+
+# ========== fuse_scores：雷达安全闸门融合 ==========
+
+SAFE = 0.3  # 安全距离阈值
+
+
+def test_no_lidar_obstacle_keeps_vision():
+    """三扇区全 inf（无障碍）→ 融合结果 = 视觉原评分。"""
+    scores = (0.8, 0.6, 0.9)
+    dists = (math.inf, math.inf, math.inf)
+    assert fuse_scores(scores, dists, SAFE) == pytest.approx(scores)
+
+
+def test_close_obstacle_forces_to_zero():
+    """某扇区距离 < SAFE → 该方向强制 0，其余保持视觉。"""
+    scores = (0.8, 0.6, 0.9)
+    dists = (0.2, math.inf, math.inf)
+    fused = fuse_scores(scores, dists, SAFE)
+    assert fused[0] == 0.0            # 左方向被闸门
+    assert fused[1] == pytest.approx(0.6)   # 中保持
+    assert fused[2] == pytest.approx(0.9)   # 右保持
+
+
+def test_exactly_at_safety_distance_keeps_vision():
+    """距离恰好 = SAFE → 不触发闸门（严格 < 才触发）。"""
+    scores = (0.8, 0.6, 0.9)
+    dists = (0.3, math.inf, math.inf)   # 刚好 0.3
+    fused = fuse_scores(scores, dists, SAFE)
+    assert fused[0] == pytest.approx(0.8)   # 保持
+    assert fused[1] == pytest.approx(0.6)
+    assert fused[2] == pytest.approx(0.9)
+
+
+def test_just_above_safety_keeps_vision():
+    """距离 = SAFE + 0.01 → 保持视觉评分。"""
+    scores = (0.8, 0.6, 0.9)
+    dists = (0.31, math.inf, math.inf)
+    fused = fuse_scores(scores, dists, SAFE)
+    assert fused[0] == pytest.approx(0.8)
+
+
+def test_all_three_sectors_blocked_by_lidar():
+    """三扇区近距离障碍 → 融合后全 0，强制停车。"""
+    scores = (0.9, 0.8, 0.7)
+    dists = (0.15, 0.2, 0.25)
+    fused = fuse_scores(scores, dists, SAFE)
+    assert fused == (0.0, 0.0, 0.0)
+
+
+def test_vision_says_clear_but_lidar_says_close():
+    """视觉认为中路畅通（0.9），但雷达发现 0.2m 内有障碍 → 强制 0。
+
+    这是雷达闸门的核心价值：视觉受光照/对比度限制可能漏判，
+    雷达给出真实距离兜底。
+    """
+    scores = (0.5, 0.9, 0.5)   # 视觉：中路畅通
+    dists = (math.inf, 0.2, math.inf)  # 雷达：中路 0.2m 有墙
+    fused = fuse_scores(scores, dists, SAFE)
+    assert fused[1] == 0.0     # 闸门覆盖视觉误判

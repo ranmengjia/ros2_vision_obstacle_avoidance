@@ -16,18 +16,19 @@
 
 | 项 | 值 |
 |---|---|
-| 操作系统 | Ubuntu 22.04.5 LTS |
-| ROS 发行版 | ROS 2 Humble |
-| 仿真器 | Gazebo classic 11.10.2 |
+| 操作系统 | Ubuntu 24.04.5 LTS |
+| ROS 发行版 | ROS 2 Jazzy |
+| 仿真器 | Gazebo Harmonic 8.15.0（`gz sim`） |
 | 构建工具 | colcon |
-| 图像处理 | OpenCV 4.5.4 + NumPy 1.21.5 |
+| 图像处理 | Python 3.12 + OpenCV 4.6.0 + NumPy 1.26.4 |
 | ROS-OpenCV 桥接 | cv_bridge |
-| 已确认可用包 | xacro, robot_state_publisher, gazebo_ros, gazebo_ros_pkgs, joint_state_publisher |
+| 仿真话题桥接 | ros_gz_bridge（`parameter_bridge`） |
+| 已确认可用包 | xacro, robot_state_publisher, joint_state_publisher, ros_gz_sim, ros_gz_bridge |
 
 构建与运行：
 
 ```bash
-source /opt/ros/humble/setup.bash
+source /opt/ros/jazzy/setup.bash
 colcon build --symlink-install
 source install/setup.bash
 ```
@@ -57,7 +58,7 @@ Gazebo 仿真场景
 
 | 包 | 职责 |
 |---|---|
-| robot_description | xacro 差速底盘 + RGB 摄像头 + Gazebo 插件 + world + spawn launch |
+| robot_description | xacro 差速底盘 + RGB 摄像头 + Gazebo Sim 系统插件 + world + `ros_gz_sim create` 启动 |
 | vision_perception | 图像预处理 + 区域分析 + 决策 + 控制 + 安全（单节点） |
 
 决策与控制暂不拆包，接口稳定后再按 PLAN.md 拆分。

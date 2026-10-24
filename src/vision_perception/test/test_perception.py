@@ -9,6 +9,9 @@ from vision_perception.perception_node import (
     decide_command,
     smooth_step,
     sector_min_distances,
+    sector_distance,
+    sector_max_distance,
+    maze_command,
     fuse_scores,
 )
 
@@ -390,3 +393,204 @@ def test_vision_says_clear_but_lidar_says_close():
     dists = (math.inf, 0.2, math.inf)  # 雷达：中路 0.2m 有墙
     fused = fuse_scores(scores, dists, SAFE)
     assert fused[1] == 0.0     # 闸门覆盖视觉误判
+
+
+# ========== sector_distance：任意方位窄扇区（v2.2 迷宫模式） ==========
+
+
+def _sector(ranges_dict, center_deg, width_deg=10.0, default=float('inf')):
+    return sector_distance(_make_scan(ranges_dict, default=default),
+                           SCAN_ANGLE_MIN, SCAN_ANGLE_INC,
+                           center_deg, width_deg)
+
+
+def test_sector_distance_front():
+    """0° 扇区取正前方障碍。"""
+    assert _sector({0: 1.4}, 0.0, 40.0) == pytest.approx(1.4)
+
+
+def test_sector_distance_diagonal_is_independent_of_perpendicular():
+    """-45° 扇区只看斜前方：正右方（-90°）的墙不参与。"""
+    # 右前 45° 有墙 0.8，正右 90° 有更近的墙 0.3
+    assert _sector({-45: 0.8, -90: 0.3}, -45.0) == pytest.approx(0.8)
+
+
+def test_sector_distance_narrow_ignores_neighbour_rays():
+    """10° 窄扇区容不下 -80° 的射线（±5° 只覆盖 -50°~-40°）。"""
+    assert _sector({-80: 0.4}, -45.0, 10.0) == math.inf
+
+
+def test_sector_distance_takes_min_inside():
+    assert _sector({-48: 2.0, -42: 1.1}, -45.0, 10.0) == pytest.approx(1.1)
+
+
+def test_sector_distance_filters_invalid_values():
+    ranges = _make_scan({-45: 0.0}, default=0.0)
+    assert sector_distance(ranges, SCAN_ANGLE_MIN, SCAN_ANGLE_INC,
+                           -45.0, 10.0) == math.inf
+
+
+def test_sector_distance_out_of_range_returns_inf():
+    """扇区完全落在雷达角度范围外 → inf。"""
+    ranges = _make_scan({0: 1.0})
+    # angle_min = 0、只有 90° 量程时，-45° 扇区在量程外
+    assert sector_distance(ranges, 0.0, SCAN_ANGLE_INC, -45.0, 10.0) == math.inf
+
+
+# ========== sector_max_distance：判断哪一侧有开口（v2.2） ==========
+
+
+def _sector_max(ranges_dict, center_deg, width_deg=125.0,
+                default=float('inf')):
+    return sector_max_distance(_make_scan(ranges_dict, default=default),
+                               SCAN_ANGLE_MIN, SCAN_ANGLE_INC,
+                               center_deg, width_deg)
+
+
+def test_sector_max_distance_takes_largest_in_wide_sector():
+    """大扇区取最远值：右侧 125° 扇区同时有近墙和远处走廊 → 取远处。"""
+    assert _sector_max({-30: 0.6, -90: 5.0, -120: 1.2}, -87.5) \
+        == pytest.approx(5.0)
+
+
+def test_sector_max_distance_excludes_other_side():
+    """左侧的远处开口不能被右侧扇区统计到。"""
+    # 右侧 -150°~-25° 内只有 0.6m 的墙；+120° 的开阔处属于左侧
+    assert _sector_max({-30: 0.6, 120: 6.0}, -87.5) == pytest.approx(0.6)
+
+
+def test_sector_max_distance_filters_invalid_values():
+    """inf/0/负数都被过滤，只剩有效值；全无效时返回 0。"""
+    ranges = _make_scan({-90: 0.0, -60: -1.0}, default=float('inf'))
+    assert sector_max_distance(ranges, SCAN_ANGLE_MIN, SCAN_ANGLE_INC,
+                               -87.5, 125.0) == 0.0
+
+
+def test_sector_max_distance_out_of_range_returns_zero():
+    """扇区完全落在雷达量程外 → 0（表示"没有可用开口"）。"""
+    ranges = _make_scan({0: 1.0})
+    assert sector_max_distance(ranges, 0.0, SCAN_ANGLE_INC,
+                               -200.0, 10.0) == 0.0
+
+
+# ========== maze_command：贴右墙迷宫控制律（v2.2） ==========
+
+MAZE = dict(front_stop=0.6, front_clear=1.0, target_gap=0.7, kp=1.4,
+            max_angular=0.5, linear_speed=0.20, slow_speed=0.10,
+            slow_distance=1.0, exit_distance=4.0)
+
+
+def maze(front, left, right, vision=1.0, right_open=None, left_open=None,
+         turning=False, turn_dir=-1):
+    """right_open/left_open 缺省时按"正前和左右前都很窄"构造左右开阔度。"""
+    if right_open is None:
+        right_open = left_open = 3.0
+    return maze_command(front, left, right, vision,
+                        right_open=right_open, left_open=left_open,
+                        turning=turning, turn_dir=turn_dir, **MAZE)
+
+
+def test_maze_exit_when_three_directions_open():
+    """三个方向都超过 4m（出口外空地）→ 判定到达出口并停车。"""
+    assert maze(8.0, 8.0, 8.0) == ('exit', 0.0, 0.0)
+
+
+def test_maze_no_exit_when_one_direction_blocked():
+    """只要有一侧仍是墙（< 4m）就不算出口。"""
+    action, _, _ = maze(8.0, 8.0, 0.6)
+    assert action != 'exit'
+
+
+def test_maze_exit_boundary_is_strict():
+    """恰好等于 exit_distance 不算出口。"""
+    action, _, _ = maze(4.0, 8.0, 8.0)
+    assert action != 'exit'
+
+
+def test_maze_front_blocked_turns_right_when_right_more_open():
+    """正前方被墙挡住、右侧更开阔 → 原地右转（角速度为负）。"""
+    action, v, w = maze(0.4, 0.6, 0.6, right_open=3.0, left_open=0.8)
+    assert (action, v) == ('turn_right', 0.0)
+    assert w == pytest.approx(-MAZE['max_angular'])
+
+
+def test_maze_front_blocked_turns_left_when_left_more_open():
+    """正前方被墙挡住、左侧更开阔 → 原地左转。"""
+    action, v, w = maze(0.4, 0.6, 0.6, right_open=0.8, left_open=3.0)
+    assert (action, v) == ('turn_left', 0.0)
+    assert w == pytest.approx(MAZE['max_angular'])
+
+
+def test_maze_front_blocked_tie_prefers_right():
+    """左右一样开阔（死胡同）→ 默认右转，保持右手法则。"""
+    action, _, w = maze(0.4, 0.6, 0.6, right_open=2.0, left_open=2.0)
+    assert action == 'turn_right'
+    assert w < 0.0
+
+
+def test_maze_turning_keeps_turning_until_front_clear():
+    """转向滞回：前方仍 < front_clear 时保持同方向继续转，不会中途直行蹭墙。"""
+    action, v, w = maze(0.9, 0.7, 0.7, turning=True, turn_dir=1)
+    assert (action, v) == ('turn_left', 0.0)
+    assert w == pytest.approx(MAZE['max_angular'])
+
+
+def test_maze_turning_right_keeps_turning_right():
+    """滞回保持原转向方向，不会因为读数抖动临时改方向。"""
+    action, _, w = maze(0.7, 3.0, 0.7, turning=True, turn_dir=-1,
+                        right_open=0.8, left_open=3.0)
+    assert action == 'turn_right'
+    assert w < 0.0
+
+
+def test_maze_turning_ends_when_front_clear():
+    """前方超过 front_clear → 结束转向，进入贴墙跟随。"""
+    action, _, _ = maze(1.2, 3.0, MAZE['target_gap'], turning=True,
+                        turn_dir=-1)
+    assert action == 'follow'
+
+
+def test_maze_wall_too_close_steers_left():
+    """右前方墙太近（< 期望间距）→ 向左偏。"""
+    action, v, w = maze(3.0, 3.0, 0.3, vision=1.0)
+    assert action == 'follow'
+    assert v == pytest.approx(MAZE['linear_speed'])
+    assert w > 0.0
+
+
+def test_maze_wall_too_far_steers_right():
+    """右前方墙太远（右侧有开口）→ 向右偏，这是右手法则的来源。"""
+    action, _, w = maze(3.0, 3.0, 1.0)
+    assert action == 'follow'
+    assert w < 0.0
+
+
+def test_maze_at_target_gap_goes_straight():
+    """右前方墙距正好等于期望间距 → 直行不转向。"""
+    action, _, w = maze(3.0, 3.0, MAZE['target_gap'])
+    assert action == 'follow'
+    assert w == pytest.approx(0.0)
+
+
+def test_maze_angular_is_clamped():
+    """比例项再大也不超过 maze_max_angular。"""
+    _, _, w = maze(3.0, 3.0, 20.0)
+    assert w == pytest.approx(-MAZE['max_angular'])
+
+
+def test_maze_vision_slows_down():
+    """视觉中路评分低（看到大片暗区）→ 减速。"""
+    _, v, _ = maze(3.0, 3.0, 0.6, vision=0.2)
+    assert v == pytest.approx(MAZE['slow_speed'])
+
+
+def test_maze_close_wall_slows_down():
+    """前墙进入 slow_distance 内 → 减速。"""
+    _, v, _ = maze(0.9, 3.0, 0.6, vision=1.0)
+    assert v == pytest.approx(MAZE['slow_speed'])
+
+
+def test_maze_full_speed_when_clear():
+    """前方开阔、视觉通畅 → 正常巡航速度。"""
+    _, v, _ = maze(2.0, 3.0, 0.6, vision=1.0)
+    assert v == pytest.approx(MAZE['linear_speed'])

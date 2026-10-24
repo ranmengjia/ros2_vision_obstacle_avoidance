@@ -20,3 +20,26 @@ perception_node:
     safety_distance: 0.5
     # 侧身护卫：直行时任一侧雷达距离小于此值则禁止直行（防止贴障擦边卡死）
     side_guard_distance: 0.25
+
+    # ===== 迷宫模式（control_mode: maze）=====
+    # reactive（默认）：视觉 + 雷达三扇区反应式避障
+    # maze：只用雷达前/左前/右前三个距离 + 左右两侧最远距离 + 视觉中路评分，
+    #       贴右墙走出迷宫。不启动 Nav2，也没有目标点。
+    control_mode: reactive
+    # 正前方小于此距离即视为被墙挡住，需要原地转向
+    maze_front_stop: 0.6
+    # 转向后正前方大于此距离才结束转向、恢复直行（滞回，防止墙角反复蹭墙）
+    maze_front_clear: 1.0
+    # 右前 45° 墙距的期望值（沿墙走时的参考间距）
+    maze_target_gap: 0.7
+    maze_kp: 1.4
+    maze_max_angular: 0.5
+    maze_linear_speed: 0.20
+    maze_slow_speed: 0.10
+    # 前方小于此距离，或视觉中路可通行率低于 0.5 时减速
+    maze_slow_distance: 1.0
+    # 三个方向同时大于此距离才判定"已出迷宫"。
+    # 迷宫内部只有 6m x 6m，不会出现三个方向 4m 净空，故不会误判。
+    maze_exit_distance: 4.0
+    # 出口判定需要连续保持的时间，抑制单帧抖动
+    maze_exit_hold_sec: 0.5

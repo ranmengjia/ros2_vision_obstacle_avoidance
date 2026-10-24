@@ -71,13 +71,17 @@ def generate_launch_description():
     )
 
     # 在 Gazebo Sim 中生成机器人实体（直接传 URDF 字符串，避免话题竞态）
+    # 出生位姿可用 spawn_x / spawn_y / spawn_yaw 覆盖（迷宫场景用 (0, 0, 0)）
     spawn_entity = Node(
         package='ros_gz_sim',
         executable='create',
         arguments=[
             '-string', robot_desc,
             '-name', 'diffbot',
-            '-x', '-2.0', '-y', '0.0', '-z', '0.01',
+            '-x', LaunchConfiguration('spawn_x'),
+            '-y', LaunchConfiguration('spawn_y'),
+            '-z', '0.01',
+            '-Y', LaunchConfiguration('spawn_yaw'),
         ],
         output='screen',
     )
@@ -121,6 +125,21 @@ def generate_launch_description():
             'headless',
             default_value='false',
             description='true 时以无界面服务器模式运行 Gazebo',
+        ),
+        DeclareLaunchArgument(
+            'spawn_x',
+            default_value='-2.0',
+            description='机器人生成位置的 x（米）',
+        ),
+        DeclareLaunchArgument(
+            'spawn_y',
+            default_value='0.0',
+            description='机器人生成位置的 y（米）',
+        ),
+        DeclareLaunchArgument(
+            'spawn_yaw',
+            default_value='0.0',
+            description='机器人生成时的朝向 yaw（弧度）',
         ),
         OpaqueFunction(function=_launch_gz_sim),
         robot_state_publisher,

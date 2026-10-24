@@ -208,6 +208,39 @@ torch / onnxruntime / tensorflow 均未安装；YOLOv8n 级模型 CPU 推理约
   与 `collision_monitor` 并存；当前不影响导航，暂未关闭。
 - SLAM 模式下地图边跑边建，`map` 坐标系下的目标不要超出已建图范围，否则容易被未知区域卡住。
 
+## v2.2 —— 迷宫自主脱困（纯视觉 + 雷达，已完成）
+
+| 步骤 | 分支 | 内容 | 验收 |
+|---|---|---|---|
+| 18 | feat/maze-escape | 迷宫 world + `control_mode:=maze`：贴右墙跟随，靠左右大扇区开阔度选转向，三向开阔判出口 | 无界面仿真中从起点自主走到出口并停车，无 Nav2、无目标点 |
+
+### v2.2 迷宫方案
+
+- `src/robot_description/worlds/maze_course.world`：DFS 递归回溯生成的 5×5 完美迷宫，
+  走廊 1.2m、墙厚 0.1m、墙高 1.0m；外墙 x/y ∈ [-3, 3]，仅东侧 `(3.0, -1.2)` 留缺口。
+- 出生点 `(0, 0, 0)`（格 2,2）；`simulation.launch.py` 新增
+  `spawn_x` / `spawn_y` / `spawn_yaw`，默认值保持原 `(-2, 0, 0)`。
+- 决策（`maze_command`，纯函数）只用三类输入：
+  - 正前 40° 最小距离 → 是否需要转向；
+  - 左前/右前 45°±5° 最小距离 → 沿右墙保持 `maze_target_gap` 的比例修正；
+  - 左右各 125° 扇区的**最远**距离 → 两边都堵时朝更开阔的一侧转；
+  - 视觉中路可通行率 < 0.5 或前方 < 1.0m 时降速到 0.10m/s。
+- 转向滞回：`maze_front_stop` 0.6m 进入原地转向，`maze_front_clear` 1.0m 才退出，
+  消除"转一下就往前蹭"的墙角死循环。
+- 出口判定：前/左/右同时 > `maze_exit_distance` 4.0m 且保持 0.5s；
+  迷宫内部最大净空 6m，不会误判。雷达"整帧 inf"用粘性标志 `lidar_seen_hit`
+  区分"刚启动无回波"与"真开阔"，早退时发布零速度防止沿用上一帧速度盲走。
+
+### v2.2 验收（2026-10-24 实测）
+
+- `colcon build --packages-select vision_perception` 通过；76 条单测全绿。
+- `perception.launch.py control_mode:=maze` + `simulation.launch.py
+  world_name:=maze_course.world spawn_x:=0.0 spawn_y:=0.0 spawn_yaw:=0.0`（无界面）：
+  154s 后打印 `已找到出口：前=infm 左=infm 右=infm，停车`，
+  终点位姿 `[2.821, -1.590] yaw=0.331`，停在东侧缺口门口，全程无 Nav2、无目标点。
+- 关键教训：只"正前 < 0.6m 就转"没有滞回会在墙角抖到卡死；必须等前方
+  真正清空（1.0m）再恢复直行。
+
 ## 关键技术决策
 
 1. v1.0 只用传统 OpenCV 基线，不引入深度学习 —— 先打通链路，可解释、易调试。
@@ -217,3 +250,5 @@ torch / onnxruntime / tensorflow 均未安装；YOLOv8n 级模型 CPU 推理约
    下一步感知升级优先深度相机（详见步骤 13 评估）。
 5. v2.1 整体迁移到 Jazzy + Harmonic，不做双版本兼容 —— 迁移前的 Humble 版备份
    只留在本地（已加 `.gitignore`），仓库只维护 Jazzy 一套代码。
+6. v2.2 迷宫脱困不引入 Nav2 / 全局规划 —— 目的是验证"纯反应式视觉 + 雷达"的
+   边界能力；贴墙跟随 + 开阔度选边已足够，且无需地图与定位。

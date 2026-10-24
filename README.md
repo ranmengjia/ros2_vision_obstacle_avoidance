@@ -11,6 +11,7 @@
 | v1.1.0 | 鲁棒性 | 弱光/低对比度多场景、角速度斜坡平滑 + 双端滞回、FPS/延迟统计、三场景 A/B 评估（[实验报告](docs/experiments/v1.1_ab_report.md)） |
 | v2.0.0 | 融合感知 + 导航 | 2D 激光雷达接入、视觉+雷达安全闸门融合（双看门狗）、Nav2（静态地图 + AMCL + DWB）、SLAM Toolbox 在线建图、DL 引入评估（结论：暂不引入） |
 | v2.1.0 | 平台迁移 | Ubuntu 22.04 + Humble + Gazebo classic 11 → Ubuntu 24.04 + Jazzy + Gazebo Harmonic 8.15；URDF/world/launch/Nav2 参数全部改用 `ros_gz` 体系，功能与验收结论不变（[ADR 0007](docs/decisions/0007-migrate-to-jazzy-harmonic.md)） |
+| v2.2.0 | 迷宫自主脱困 | 5×5 完美迷宫 world（唯一出口）；`control_mode:=maze` 只用雷达前/左前/右前距离 + 左右两侧最大开阔度 + 视觉中路评分走出迷宫，全程不启动 Nav2、不下发目标点 |
 
 ## 技术基线
 
@@ -65,15 +66,28 @@ ros2 launch robot_description nav2.launch.py
 
 # 3) SLAM 在线建图 + 导航（无需预画地图）
 ros2 launch robot_description slam.launch.py
+
+# 4) 迷宫自主脱困（纯视觉 + 雷达，无 Nav2、无目标点）
+ros2 launch robot_description simulation.launch.py \
+         world_name:=maze_course.world spawn_x:=0.0 spawn_y:=0.0 spawn_yaw:=0.0
+ros2 launch vision_perception perception.launch.py control_mode:=maze
 ```
 
-常用启动参数（三种模式通用）：
+迷宫模式说明：5×5 完美迷宫，走廊 1.2m、墙高 1.0m，外墙上只有东侧
+`(3.0, -1.2)` 一个缺口。机器人贴右墙走，遇墙用左右各 125° 大扇区的最远距离
+比较哪边更开阔再决定转向，前后带滞回（`maze_front_stop` 0.6m 进入转向、
+`maze_front_clear` 1.0m 才退出），避免在墙角反复蹭墙。前/左/右三方向同时
+大于 `maze_exit_distance`(4.0m) 并保持 0.5s 即判定找到出口并停车。
+
+常用启动参数：
 
 | 参数 | 默认 | 说明 |
 |---|---|---|
 | `world_name` | `detour_test.world` | 换场景，取值在 `src/robot_description/worlds/` |
 | `headless` | `false` | `true` 时只跑 `gz sim -s`（无 Gazebo 窗口，省 CPU） |
 | `use_rviz` | `true` | `false` 时不自动开 RViz |
+| `spawn_x` / `spawn_y` / `spawn_yaw` | `-2.0` / `0.0` / `0.0` | 机器人生成位姿；迷宫场景请用 `0.0 / 0.0 / 0.0` |
+| `control_mode` | `reactive` | `reactive` 三扇区避障；`maze` 迷宫贴墙脱困 |
 
 ```bash
 # 例：无界面换场景
@@ -92,8 +106,8 @@ colcon test --packages-select vision_perception
 python3 -m pytest src/vision_perception/test/ -v
 ```
 
-50 条单元测试覆盖：掩膜生成、三分评分、滞回决策、全受阻停车、
-雷达扇区映射、融合闸门、双看门狗等纯函数逻辑。
+76 条单元测试覆盖：掩膜生成、三分评分、滞回决策、全受阻停车、
+雷达扇区映射、融合闸门、双看门狗、迷宫贴墙转向与出口判定等纯函数逻辑。
 
 ## 文档
 

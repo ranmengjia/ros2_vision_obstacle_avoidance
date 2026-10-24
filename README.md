@@ -10,7 +10,6 @@
 | v1.0.0 | 基础闭环 | 单目 RGB → 亮度阈值 + 形态学 → 可通行掩膜 → 左/中/右评分 → 滞回决策 → `/cmd_vel`；图像超时强制停车；50 条 pytest 单测 |
 | v1.1.0 | 鲁棒性 | 弱光/低对比度多场景、角速度斜坡平滑 + 双端滞回、FPS/延迟统计、三场景 A/B 评估（[实验报告](docs/experiments/v1.1_ab_report.md)） |
 | v2.0.0 | 融合感知 + 导航 | 2D 激光雷达接入、视觉+雷达安全闸门融合（双看门狗）、Nav2（静态地图 + AMCL + DWB）、SLAM Toolbox 在线建图、DL 引入评估（结论：暂不引入） |
-| v2.1.0 | 平台迁移 | Ubuntu 22.04 + Humble + Gazebo classic 11 → Ubuntu 24.04 + Jazzy + Gazebo Harmonic 8.15；URDF/world/launch/Nav2 参数全部改用 `ros_gz` 体系，功能与验收结论不变（[ADR 0007](docs/decisions/0007-migrate-to-jazzy-harmonic.md)） |
 | v2.2.0 | 迷宫自主脱困 | 5×5 完美迷宫 world（唯一出口）；`control_mode:=maze` 只用雷达前/左前/右前距离 + 左右两侧最大开阔度 + 视觉中路评分走出迷宫，全程不启动 Nav2、不下发目标点 |
 
 ## 技术基线

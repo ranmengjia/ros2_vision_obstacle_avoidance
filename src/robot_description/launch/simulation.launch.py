@@ -1,6 +1,6 @@
 """Gazebo Harmonic 仿真启动：加载 world 场景并生成差速机器人。
 
-与 Gazebo Classic 版本的区别：
+实现要点（相对迁移前的 Gazebo classic 版本）：
 - 用 ros_gz_sim 的 gz_sim.launch.py 启动 Gazebo Sim（Harmonic）
 - 用 ros_gz_sim create 生成机器人实体
 - 用 ros_gz_bridge 把 Gazebo Transport 话题桥接到 ROS 2

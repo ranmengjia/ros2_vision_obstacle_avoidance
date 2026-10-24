@@ -443,4 +443,4 @@ def main(args=None):
         try:
             rclpy.shutdown()
         except Exception:
-            pass  # Humble 中 Ctrl+C 后 shutdown 可能已被内部调用
+            pass  # Ctrl+C 后 shutdown 可能已被内部调用，重复调用会抛异常

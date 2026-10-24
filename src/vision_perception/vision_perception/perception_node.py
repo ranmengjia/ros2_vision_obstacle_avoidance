@@ -116,6 +116,101 @@ def fuse_scores(zone_scores, sector_dists, safety_distance,
     return tuple(fused)
 
 
+def sector_distance(ranges, angle_min, angle_increment,
+                    center_deg, width_deg=30.0):
+    """取某个角度扇区内的最小距离（扇区以 center_deg 为中心、总宽 width_deg）。
+
+    与 sector_min_distances 的区别：本函数可以取任意方位（如 ±90° 的侧向），
+    供迷宫模式的"右墙保持"使用。
+
+    ros LaserScan 角度约定：0° = 正前方，正角度 = 逆时针（机器人左侧）。
+    返回扇区内最小有效距离；无有效数据返回 inf。
+    """
+    lo = math.radians(center_deg - width_deg / 2.0)
+    hi = math.radians(center_deg + width_deg / 2.0)
+    n = len(ranges)
+    lo_idx = max(0, int(math.floor((lo - angle_min) / angle_increment)))
+    hi_idx = min(n - 1, int(math.floor((hi - angle_min) / angle_increment)))
+    if lo_idx > hi_idx:
+        return float('inf')
+    vals = [ranges[i] for i in range(lo_idx, hi_idx + 1)
+            if math.isfinite(ranges[i]) and ranges[i] > 0.0]
+    return min(vals) if vals else float('inf')
+
+
+def sector_max_distance(ranges, angle_min, angle_increment,
+                        center_deg, width_deg=30.0):
+    """取某个角度扇区内的最大距离，用于判断哪一侧存在开口。"""
+    lo = math.radians(center_deg - width_deg / 2.0)
+    hi = math.radians(center_deg + width_deg / 2.0)
+    n = len(ranges)
+    lo_idx = max(0, int(math.floor((lo - angle_min) / angle_increment)))
+    hi_idx = min(n - 1, int(math.floor((hi - angle_min) / angle_increment)))
+    if lo_idx > hi_idx:
+        return 0.0
+    vals = [ranges[i] for i in range(lo_idx, hi_idx + 1)
+            if math.isfinite(ranges[i]) and ranges[i] > 0.0]
+    return max(vals) if vals else 0.0
+
+
+def maze_command(front, left, right, vision_center,
+                 right_open=0.0, left_open=0.0,
+                 front_stop=0.6, front_clear=1.0, target_gap=0.7,
+                 kp=1.4, max_angular=0.5, linear_speed=0.20,
+                 slow_speed=0.10, slow_distance=1.0,
+                 exit_distance=4.0, turning=False, turn_dir=-1):
+    """迷宫模式的纯函数控制律：贴右墙跟随 + 遇墙朝开阔侧转。
+
+    没有地图、没有 Nav2 目标点：只用 360° 雷达
+    （正前 0°、右前 -45°、左前 +45°、右侧/左侧大扇区最远距离），
+    视觉中路评分只用于提前减速。
+
+    - 用右前 45° 而不是正右 90°：沿墙时读数连续，遇到右侧开口会明显变大，
+      比例控制自然就"能右转就右转"，不用离散状态机，也不会原地打转。
+    - 正前方被挡时比较左右两侧的最远距离，朝更开阔的一侧原地转；
+      起点格只有身后一个开口，此时若固定右转/左转会在墙角无限打转。
+    - 转向带滞回：一旦开始转，就转到正前方 > front_clear 才切回贴墙跟随。
+      否则前方 0.6~0.7 m 时会在"转一下→往前蹭一点"之间反复，卡在墙角。
+    - exit_distance 取 4.0 m：迷宫内部只有 6 m × 6 m，越过 180° 的三个方向
+      不可能同时有 4 m 净空，因此不会在迷宫里误判出口（出口外是空地）。
+
+    决策顺序：
+    1. 前/左/右全部 > exit_distance → 'exit'（已走出迷宫）
+    2. 正在转且正前方仍 < front_clear → 保持同方向继续原地转
+    3. 正前方 < front_stop：右侧更开阔 → 原地右转，否则左转
+    4. 否则按右前墙距误差做比例转向：墙太近 → 左偏，墙太远 → 右偏
+
+    turning/turn_dir 是上一个控制周期的转向状态（turn_dir: +1 左、-1 右）。
+
+    返回 (action, linear_x, angular_z)，action ∈ exit/follow/turn_left/turn_right
+    """
+    if (front > exit_distance and left > exit_distance
+            and right > exit_distance):
+        return 'exit', 0.0, 0.0
+
+    if turning:
+        if front < front_clear:
+            if turn_dir > 0:
+                return 'turn_left', 0.0, max_angular
+            return 'turn_right', 0.0, -max_angular
+        # 前方已清空，结束转向，进入贴墙跟随
+
+    if front < front_stop:
+        # 前方被墙挡住：朝更开阔的一侧原地转（等前方清空后继续贴墙走）
+        if right_open >= left_open:
+            return 'turn_right', 0.0, -max_angular
+        return 'turn_left', 0.0, max_angular
+
+    # 沿右前方墙面保持固定间距；右侧出现开口时 right 变大 → 自动右转
+    angular = kp * (target_gap - right)
+    angular = max(-max_angular, min(max_angular, angular))
+
+    # 前方接近墙体（雷达）或视觉已经看到大片暗区 → 减速观察
+    speed = slow_speed if (front < slow_distance
+                           or vision_center < 0.5) else linear_speed
+    return 'follow', speed, angular
+
+
 def smooth_step(target, current, max_delta):
     """把 current 向 target 逼近一步，单步变化量不超过 max_delta（斜坡限幅）。
 
@@ -256,6 +351,31 @@ class PerceptionNode(Node):
         self.max_angular_accel = self.get_parameter('max_angular_accel').value
         self.safety_timeout = self.get_parameter('safety_timeout').value
 
+        # ===== 迷宫模式参数（v2.2 新增）=====
+        # control_mode = reactive（默认，三扇区避障）/ maze（右手法则找出口）
+        self.declare_parameter('control_mode', 'reactive')
+        self.declare_parameter('maze_front_stop', 0.6)
+        self.declare_parameter('maze_front_clear', 1.0)
+        self.declare_parameter('maze_target_gap', 0.7)
+        self.declare_parameter('maze_kp', 1.4)
+        self.declare_parameter('maze_max_angular', 0.5)
+        self.declare_parameter('maze_linear_speed', 0.20)
+        self.declare_parameter('maze_slow_speed', 0.10)
+        self.declare_parameter('maze_slow_distance', 1.0)
+        self.declare_parameter('maze_exit_distance', 4.0)
+        self.declare_parameter('maze_exit_hold_sec', 0.5)
+        self.control_mode = self.get_parameter('control_mode').value
+        self.maze_front_stop = self.get_parameter('maze_front_stop').value
+        self.maze_front_clear = self.get_parameter('maze_front_clear').value
+        self.maze_target_gap = self.get_parameter('maze_target_gap').value
+        self.maze_kp = self.get_parameter('maze_kp').value
+        self.maze_max_angular = self.get_parameter('maze_max_angular').value
+        self.maze_linear_speed = self.get_parameter('maze_linear_speed').value
+        self.maze_slow_speed = self.get_parameter('maze_slow_speed').value
+        self.maze_slow_distance = self.get_parameter('maze_slow_distance').value
+        self.maze_exit_distance = self.get_parameter('maze_exit_distance').value
+        self.maze_exit_hold_sec = self.get_parameter('maze_exit_hold_sec').value
+
         # ===== ROS 通信 =====
         self.bridge = CvBridge()
         self.frame_count = 0
@@ -286,6 +406,15 @@ class PerceptionNode(Node):
         self.last_image_time = None
         self.last_scan_time = None    # 最近有效 scan 到达时间
         self.stopped_by_watchdog = False
+
+        # 迷宫模式状态（v2.2 新增）
+        self.last_maze_dists = None   # (前, 左前, 右前) 迷宫专用扇区距离
+        self.last_maze_openness = None  # (右, 左) 两侧大扇区最远距离
+        self.exit_found = False
+        self.exit_hold_ticks = 0
+        self.maze_turning = False     # 是否正在原地转向（带滞回）
+        self.maze_turn_dir = -1       # 转向方向：+1 左，-1 右
+        self.lidar_seen_hit = False   # 雷达是否已出现过有限回波（粘性标志）
 
         # FPS / 延迟统计
         self.fps_frames = 0
@@ -367,6 +496,27 @@ class PerceptionNode(Node):
             return
         self.last_sector_dists = sector_min_distances(
             msg.ranges, msg.angle_min, msg.angle_increment, self.scan_fov_deg)
+        if not self.lidar_seen_hit and any(
+                math.isfinite(r) and r > 0.0 for r in msg.ranges):
+            # 出现过一次有限回波后就不再撤销：之后再全 inf 只能是真开阔
+            self.lidar_seen_hit = True
+        if self.control_mode == 'maze':
+            # 迷宫模式：正前 40° 窄扇区 + 左前/右前 45° 各 10°，
+            # 再加左右两侧各 125° 大扇区的最远距离（判断该往哪边转）
+            self.last_maze_dists = (
+                sector_distance(msg.ranges, msg.angle_min,
+                                msg.angle_increment, 0.0, 40.0),
+                sector_distance(msg.ranges, msg.angle_min,
+                                msg.angle_increment, 45.0, 10.0),
+                sector_distance(msg.ranges, msg.angle_min,
+                                msg.angle_increment, -45.0, 10.0),
+            )
+            self.last_maze_openness = (
+                sector_max_distance(msg.ranges, msg.angle_min,
+                                    msg.angle_increment, -87.5, 125.0),
+                sector_max_distance(msg.ranges, msg.angle_min,
+                                    msg.angle_increment, 87.5, 125.0),
+            )
         self.last_scan_time = self.get_clock().now()
 
     # ------------------------------------------------------------------ #
@@ -403,6 +553,89 @@ class PerceptionNode(Node):
             return
         self.stopped_by_watchdog = False
 
+        # 迷宫模式：右手法则找出口，不走三扇区避障逻辑
+        if self.control_mode == 'maze':
+            self.maze_control_loop(twist)
+            return
+
+        # 默认模式：视觉 + 雷达三扇区反应式避障
+        self.reactive_control_loop(twist)
+
+    # ------------------------------------------------------------------ #
+    # 迷宫模式：贴右墙跟随 + 出口判定                                       #
+    # ------------------------------------------------------------------ #
+    def maze_control_loop(self, twist: Twist):
+        """只用雷达前/左/右距离 + 视觉中路评分，沿墙走到出口。"""
+        if (self.last_scores is None or self.last_maze_dists is None
+                or self.last_maze_openness is None):
+            return
+
+        # 已确认走出出口：保持停车，不再继续乱走
+        if self.exit_found:
+            self.cmd_pub.publish(twist)
+            return
+
+        front, left, right = self.last_maze_dists
+        right_open, left_open = self.last_maze_openness
+        vision_center = self.last_scores[1]
+
+        # 雷达启动瞬间整帧 inf（无回波）时先原地等待；
+        # 一旦见过回波，再全 inf 就是真开阔，可正常判出口
+        if not self.lidar_seen_hit:
+            self.cmd_pub.publish(twist)
+            return
+
+        action, speed, angular = maze_command(
+            front, left, right, vision_center,
+            right_open=right_open,
+            left_open=left_open,
+            front_stop=self.maze_front_stop,
+            front_clear=self.maze_front_clear,
+            target_gap=self.maze_target_gap,
+            kp=self.maze_kp,
+            max_angular=self.maze_max_angular,
+            linear_speed=self.maze_linear_speed,
+            slow_speed=self.maze_slow_speed,
+            slow_distance=self.maze_slow_distance,
+            exit_distance=self.maze_exit_distance,
+            turning=self.maze_turning,
+            turn_dir=self.maze_turn_dir)
+
+        # 记录转向状态，供下一个周期做滞回
+        self.maze_turning = action in ('turn_left', 'turn_right')
+        if action == 'turn_left':
+            self.maze_turn_dir = 1
+        elif action == 'turn_right':
+            self.maze_turn_dir = -1
+
+        if action == 'exit':
+            # 连续 hold 一段时间才认定到出口，避免单帧读数抖动误判
+            self.exit_hold_ticks += 1
+            if (self.exit_hold_ticks * self.control_period
+                    >= self.maze_exit_hold_sec):
+                self.exit_found = True
+                self.get_logger().info(
+                    f'已找到出口：前={front:.2f}m 左={left:.2f}m 右={right:.2f}m，停车')
+        else:
+            self.exit_hold_ticks = 0
+
+        twist.linear.x = speed
+        twist.angular.z = angular
+
+        max_delta = self.max_angular_accel * self.control_period
+        self.current_angular_z = smooth_step(
+            twist.angular.z, self.current_angular_z, max_delta)
+        twist.angular.z = self.current_angular_z
+
+        self.cmd_pub.publish(twist)
+
+        self.get_logger().info(
+            f'迷宫 {action} 前={front:.2f} 左={left:.2f} 右={right:.2f} '
+            f'视觉={vision_center:.2f} v={speed:.2f} w={twist.angular.z:.2f}',
+            throttle_duration_sec=1.0)
+
+    def reactive_control_loop(self, twist: Twist):
+        """原有的三扇区视觉 + 雷达反应式避障。"""
         # 正常决策（self.last_scores 已在 image_callback 中融合完毕）
         action, self.turn_dir = decide_command(
             self.last_scores, self.turn_dir, self.prev_action,

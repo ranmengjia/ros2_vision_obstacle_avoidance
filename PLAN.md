@@ -16,11 +16,11 @@
 
 | 项 | 值 |
 |---|---|
-| 操作系统 | Ubuntu 22.04.5 LTS |
-| ROS 发行版 | ROS 2 Humble |
-| 仿真器 | Gazebo classic 11.10.2 |
-| 图像处理 | OpenCV 4.5.4 + NumPy 1.21.5 |
-| 桥接 | cv_bridge |
+| 操作系统 | Ubuntu 24.04.5 LTS |
+| ROS 发行版 | ROS 2 Jazzy |
+| 仿真器 | Gazebo Harmonic 8.15.0（`gz sim`） |
+| 图像处理 | Python 3.12 + OpenCV 4.6.0 + NumPy 1.26.4 |
+| 桥接 | cv_bridge + ros_gz_bridge |
 | 构建 | colcon |
 
 ## v1.0 —— 基础闭环（单目 RGB + OpenCV 传统基线）
@@ -170,6 +170,44 @@ torch / onnxruntime / tensorflow 均未安装；YOLOv8n 级模型 CPU 推理约
 3. 若继续投入感知硬件方向，**深度相机**（补悬空障碍 + 真实深度）比 DL 收益更大、
    更贴合"融合感知"主线。
 
+## v2.1 —— 平台迁移（Jazzy + Gazebo Harmonic，已完成）
+
+| 步骤 | 分支 | 内容 | 验收 |
+|---|---|---|---|
+| 14 | feat/jazzy-migration | 构建与依赖迁移：Ubuntu 24.04 + ROS 2 Jazzy，`ros_gz` 替换 `gazebo_ros` 系列 | `colcon build` 通过 |
+| 15 | feat/jazzy-migration | 仿真链路迁移：world 系统插件、`<gazebo reference>` 下 gz sensor、`gz::sim::systems::DiffDrive` | Gazebo 起得来、相机/雷达有数据 |
+| 16 | feat/jazzy-migration | Nav2 / SLAM 参数适配 Jazzy（collision_monitor、docking_server、map_server 空值覆盖） | 生命周期全 active、导航到点 SUCCEEDED |
+| 17 | docs/jazzy-migration | 文档与评估脚本同步：README / PLAN / requirements / ADR 0007 / run_ab.sh | 文档内命令与实际环境一致 |
+
+### v2.1 迁移对照
+
+| 迁移前（Humble + classic 11） | 迁移后（Jazzy + Harmonic 8.15） |
+|---|---|
+| `gazebo_ros/gzserver.launch.py` + `gzclient` | `ros_gz_sim` 的 `gz_sim.launch.py`，进程为 `gz sim` / `gz sim server` / `gz sim gui` |
+| `gazebo_ros/spawn_entity.py` | `ros_gz_sim create` |
+| gazebo_ros 插件 + 话题桥 | `gz::sim::systems::*` 插件 + `ros_gz_bridge/parameter_bridge` |
+| URDF 中 `<gazebo>` 下写 camera / ray 插件 | `<gazebo reference>` 下 `<sensor type="camera\|gpu_lidar">` + `<gz_frame_id>` |
+| Nav2 没有 collision_monitor / docking_server | 两者无条件启动，`polygons` 与 `dock_plugins` 必须非空 |
+| Nav2 允许 `yaml_filename: ""` 占位 | 节点专用段空值会盖掉 launch 注入值，必须删掉该行 |
+
+### v2.1 验收（2026-10-24 实测）
+
+- `colcon build --packages-select robot_description vision_perception` → 2 packages finished。
+- `/camera/camera_info` 15.1Hz、`/scan` 10.0Hz，`dim_course.world` / `low_contrast_course.world` 0 条错误。
+- `nav2.launch.py`：amcl / map_server / bt_navigator / planner_server / controller_server 全部 active，
+  目标 (1.0, 0) 返回 `SUCCEEDED`（error_code 0）；隔离域复测 (2.0, 0) 同样成功。
+- `slam.launch.py`：`/map` 159×159@0.05，`map_saver_cli` 保存 .pgm + .yaml 成功。
+- `tools/eval/eval_session.py` 8s 采样：`distance_m 1.65`、`collisions 0`、`max_image_gap_s 0.07`。
+- 50 条单测全绿。
+
+### v2.1 已知限制
+
+- 本机用户不在 `video` / `render` 组，Gazebo GUI 退化为 llvmpipe 软件渲染（约 122% CPU），
+  能正常显示但吃 CPU；`sudo usermod -aG video,render $USER` 后重新登录可解决。
+- `navigation_launch.py` 无条件拉起的 `docking_server` 也会发布 `/cmd_vel`，
+  与 `collision_monitor` 并存；当前不影响导航，暂未关闭。
+- SLAM 模式下地图边跑边建，`map` 坐标系下的目标不要超出已建图范围，否则容易被未知区域卡住。
+
 ## 关键技术决策
 
 1. v1.0 只用传统 OpenCV 基线，不引入深度学习 —— 先打通链路，可解释、易调试。
@@ -177,3 +215,5 @@ torch / onnxruntime / tensorflow 均未安装；YOLOv8n 级模型 CPU 推理约
 3. v1.0 先两包结构 —— 单节点串行便于定位问题，接口稳定后再拆。
 4. v2.0 评估后不引入语义分割/目标检测 —— sim 域差距大、无 GPU、收益不匹配；
    下一步感知升级优先深度相机（详见步骤 13 评估）。
+5. v2.1 整体迁移到 Jazzy + Harmonic，不做双版本兼容 —— 迁移前的 Humble 版备份
+   只留在本地（已加 `.gitignore`），仓库只维护 Jazzy 一套代码。

@@ -36,6 +36,7 @@ def generate_launch_description():
             os.path.join(pkg_share, 'launch', 'simulation.launch.py')),
         launch_arguments={
             'world_name': LaunchConfiguration('world_name'),
+            'headless': LaunchConfiguration('headless'),
         }.items(),
     )
 
@@ -105,6 +106,10 @@ def generate_launch_description():
             'use_rviz',
             default_value='true',
             description='是否启动 RViz'),
+        DeclareLaunchArgument(
+            'headless',
+            default_value='false',
+            description='true 时 Gazebo 以无界面服务器模式运行'),
         simulation,
         rviz,
         slam_delayed,

@@ -2,8 +2,21 @@
 <sdf version="1.6">
   <world name="low_contrast_course">
 
+    <!-- ========== Gazebo Sim 系统插件 ========== -->
+    <plugin filename="gz-sim-physics-system"
+            name="gz::sim::systems::Physics"/>
+    <plugin filename="gz-sim-user-commands-system"
+            name="gz::sim::systems::UserCommands"/>
+    <plugin filename="gz-sim-scene-broadcaster-system"
+            name="gz::sim::systems::SceneBroadcaster"/>
+    <!-- 相机/激光雷达等渲染传感器必须由 Sensors 系统插件驱动 -->
+    <plugin filename="gz-sim-sensors-system"
+            name="gz::sim::systems::Sensors">
+      <render_engine>ogre2</render_engine>
+    </plugin>
+
     <!-- ========== 物理与光照 ========== -->
-    <physics type="ode">
+    <physics type="ignored">
       <max_step_size>0.001</max_step_size>
       <real_time_factor>1.0</real_time_factor>
     </physics>

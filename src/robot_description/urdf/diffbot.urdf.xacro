@@ -193,12 +193,15 @@
     <child link="camera_link_optical"/>
   </joint>
 
-  <!-- ========== Gazebo 相机插件 ========== -->
+  <!-- ========== Gazebo Sim 相机传感器 ========== -->
+  <!-- 图像由 ros_gz_bridge 桥接到 ROS 2 的 /camera/image_raw -->
   <gazebo reference="camera_link">
     <sensor name="camera" type="camera">
       <update_rate>15</update_rate>
       <always_on>true</always_on>
       <visualize>true</visualize>
+      <topic>/camera/image_raw</topic>
+      <gz_frame_id>camera_link_optical</gz_frame_id>
       <camera>
         <horizontal_fov>1.047</horizontal_fov>
         <image>
@@ -211,12 +214,6 @@
           <far>10.0</far>
         </clip>
       </camera>
-      <plugin name="camera_controller" filename="libgazebo_ros_camera.so">
-        <ros>
-          <namespace>/</namespace>
-        </ros>
-        <frame_name>camera_link_optical</frame_name>
-      </plugin>
     </sensor>
   </gazebo>
 
@@ -249,12 +246,15 @@
     <child link="lidar_link"/>
   </joint>
 
-  <!-- ========== Gazebo 激光雷达插件 ========== -->
+  <!-- ========== Gazebo Sim 激光雷达传感器 ========== -->
+  <!-- 扫描数据由 ros_gz_bridge 桥接到 ROS 2 的 /scan -->
   <gazebo reference="lidar_link">
-    <sensor name="lidar" type="ray">
+    <sensor name="lidar" type="gpu_lidar">
       <update_rate>10</update_rate>
       <always_on>true</always_on>
       <visualize>true</visualize>
+      <topic>/scan</topic>
+      <gz_frame_id>lidar_link</gz_frame_id>
       <ray>
         <scan>
           <horizontal>
@@ -270,45 +270,31 @@
           <resolution>0.01</resolution>
         </range>
       </ray>
-      <plugin name="lidar_controller" filename="libgazebo_ros_ray_sensor.so">
-        <ros>
-          <remapping>~/out:=/scan</remapping>
-        </ros>
-        <output_type>sensor_msgs/LaserScan</output_type>
-        <frame_name>lidar_link</frame_name>
-      </plugin>
     </sensor>
   </gazebo>
 
-    <!-- ========== 差速驱动插件 ========== -->
-  <gazebo>
-    <plugin name="diff_drive_controller" filename="libgazebo_ros_diff_drive.so">
-      <ros>
-        <remapping>cmd_vel:=/cmd_vel</remapping>
-        <remapping>odom:=/odom</remapping>
-      </ros>
+    <!-- ========== Gazebo Sim 差速驱动系统插件 ========== -->
+    <!-- 命令/里程计/TF 由 ros_gz_bridge 与 ROS 2 的 /cmd_vel、/odom、/tf 桥接 -->
+    <gazebo>
+      <plugin name="gz::sim::systems::DiffDrive" filename="gz-sim-diff-drive-system">
+        <left_joint>left_wheel_joint</left_joint>
+        <right_joint>right_wheel_joint</right_joint>
 
-      <update_rate>30</update_rate>
+        <wheel_separation>0.22</wheel_separation>
+        <wheel_radius>0.05</wheel_radius>
 
-      <left_joint>left_wheel_joint</left_joint>
-      <right_joint>right_wheel_joint</right_joint>
+        <max_linear_velocity>0.2</max_linear_velocity>
+        <max_angular_velocity>0.8</max_angular_velocity>
+        <max_linear_acceleration>0.25</max_linear_acceleration>
+        <max_angular_acceleration>2.2</max_angular_acceleration>
 
-      <wheel_separation>0.22</wheel_separation>
-      <wheel_diameter>0.10</wheel_diameter>
-
-      <max_wheel_torque>20</max_wheel_torque>
-      <max_wheel_acceleration>5.0</max_wheel_acceleration>
-
-      <command_topic>cmd_vel</command_topic>
-      <odometry_topic>odom</odometry_topic>
-      <odometry_frame>odom</odometry_frame>
-      <robot_base_frame>base_link</robot_base_frame>
-      <publish_odom>true</publish_odom>
-      <publish_odom_tf>true</publish_odom_tf>
-      <!-- 轮子 TF 由 robot_state_publisher 发布；插件再发一份会让 Nav2 节点
-           持续报 TF_OLD_DATA（Nav2 用不到轮子 TF，关掉可消除刷屏） -->
-      <publish_wheel_tf>false</publish_wheel_tf>
-    </plugin>
-  </gazebo>
+        <topic>/cmd_vel</topic>
+        <odom_topic>/odom</odom_topic>
+        <tf_topic>/tf</tf_topic>
+        <frame_id>odom</frame_id>
+        <child_frame_id>base_link</child_frame_id>
+        <odom_publish_frequency>30</odom_publish_frequency>
+      </plugin>
+    </gazebo>
 
 </robot>

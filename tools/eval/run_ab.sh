@@ -9,7 +9,7 @@ ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 OUT_DIR="$ROOT/docs/experiments/data"
 mkdir -p "$OUT_DIR"
 
-source /opt/ros/humble/setup.bash
+source /opt/ros/jazzy/setup.bash
 source "$ROOT/install/setup.bash"
 export ROS_DOMAIN_ID=42
 
@@ -17,10 +17,10 @@ cleanup() {
   pkill -9 -f "ros2 launch robot_description" 2>/dev/null
   pkill -9 -f "ros2 launch vision_perception" 2>/dev/null
   pkill -9 -f "perception_node --ros-args" 2>/dev/null
-  pkill -9 -f "spawn_entity.py" 2>/dev/null
+  pkill -9 -f "ros_gz_sim" 2>/dev/null
+  pkill -9 -f "parameter_bridge" 2>/dev/null
   pkill -9 -f "robot_state_publisher" 2>/dev/null
-  pkill -9 -f "gzserver" 2>/dev/null
-  pkill -9 -f "gzclient" 2>/dev/null
+  pkill -9 -f "gz sim" 2>/dev/null
   sleep 2
 }
 trap cleanup EXIT INT TERM

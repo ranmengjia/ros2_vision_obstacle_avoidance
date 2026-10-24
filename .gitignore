@@ -19,5 +19,8 @@ __pycache__/
 *.bag
 *.mcap
 
+# 基准运行时的进程日志（体积大，可由脚本复现）
+tools/benchmark/results/_logs/
+
 # 迁移前的 Humble 版本地备份
 *.classic.bak

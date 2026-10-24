@@ -203,6 +203,62 @@ torch / onnxruntime / tensorflow 均未安装；YOLOv8n 级模型 CPU 推理约
 - 关键教训：只"正前 < 0.6m 就转"没有滞回会在墙角抖到卡死；必须等前方
   真正清空（1.0m）再恢复直行。
 
+## v3.0 —— OpenCV 反应式 vs Nav2 基准（已完成）
+
+| 步骤 | 分支 | 内容 | 验收 |
+|---|---|---|---|
+| 15 | feat/benchmark-suite | 5 场景 × 5 臂自动基准：`run_benchmark.py` 起停 Gazebo/Nav2、采集指标，`report.py` 出表出图 | 全量一次跑通，`results/report.md` 与 `chart.png` 自动生成 |
+
+### v3.0 对比设计
+
+- 场景矩阵（`tools/benchmark/scenarios.yaml`）：
+  - `detour_test`：起步就要求横移到缺口再前进，测"能不能绕"；
+  - `obstacle_course`：直线障碍，测"能不能避"；
+  - `low_contrast_course` / `dim_course`：弱光与低对比度，测视觉退化；
+  - `maze_course`：5×5 迷宫，测"只有局部观测时的长程脱困"。
+- 五条臂（`--arm`）：
+  - `vision`（纯 OpenCV）、`lidar`（纯雷达）、`fused`（视觉+雷达，默认）
+    —— 三条反应式臂共用 `perception_node` 的 `sensor_mode` 消融；
+  - `nav2`：先验地图 + AMCL + SmacPlanner2D + RPP，由脚本用 `NavigateToPose` 下发目标；
+  - `hybrid`：Nav2 的 `collision_monitor` 输出改名 `cmd_vel_raw`，`vision_guard.py`
+    订阅相机、正前方过近时覆盖为降速/转向，验证"规划 + 视觉兜底"。
+- 指标（`tools/benchmark/metrics.py`，38 条单测）：成功率、到达时间、路程、
+  最小雷达间距、碰撞次数、卡死占比、角速度 jerk、CPU 占比、失败归因。
+- 到达判定：Nav2 臂用终点容差圆；反应式臂不收敛到点，额外接受
+  "越过终点线且横向偏差 ≤ `lane_tolerance`"，否则直行通过的场景会被误判超时。
+
+### v3.0 验收（2026-10-24 实测，每格 1 次）
+
+| 场景 | 纯 OpenCV | 纯雷达 | 视觉+雷达 | Nav2 | Nav2+视觉护栏 |
+|---|---|---|---|---|---|
+| detour_test | 失败（碰撞 2） | 54.6s / 9.53m | 62.3s / 9.93m | 23.1s / 4.48m | 23.3s / 4.52m |
+| obstacle_course | 25.9s / 4.90m | 25.8s / 4.90m | 26.0s / 4.90m | 25.1s / 4.93m | 25.2s / 4.94m |
+| low_contrast_course | 25.8s / 4.90m | — | 25.9s / 4.90m | 25.0s / 4.92m | — |
+| dim_course | 26.0s / 4.90m | — | 26.0s / 4.90m | 25.1s / 4.93m | — |
+| maze_course | — | 154.2s / 22.18m | 153.9s / 22.21m | 92.7s / 17.71m | 92.1s / 17.67m |
+
+- 纯 OpenCV 在 `detour_test` 因连续 2 帧 < 0.13m 回波判碰撞失败；其余结构化场景
+  与 Nav2 打平（约 26s），说明"直线/单障碍"类问题反应式已足够。
+- 迷宫差距最大：反应式贴墙 22m，Nav2 用先验地图 17.7m，时间少 40%。
+- `hybrid` 与 `nav2` 用时基本一致（共同场景均值 46.9s vs 47.0s），
+  正常导航时视觉护栏不介入，只在危险距离兜底；CPU 占比略高（3.21 vs 2.99）。
+- 见 `tools/benchmark/results/report.md` 与 `chart.png`。
+
+### v3.0 踩坑与修正
+
+1. **NavFn 有路径长度上限**：`NavFn::calcPath` 每次迭代前进 0.5 栅格，
+   `max_cycles = max(nx, ny) * 4`，即上限约为地图宽度的 2 倍。迷宫地图宽 7.1m，
+   上限 14.2m，而实际路线 22m → 规划恒返回 0，日志为
+   `Failed to create a plan from potential when a legal potential was found.`。
+   换 `nav2_smac_planner::SmacPlanner2D` 后解决。
+2. **DWB 在 1.1m 窄走廊失效**：表现为原地反复微转（`angular_reversals` 32、
+   `stopped_fraction` 0.84）、反复 `Failed to make progress` 后触发恢复行为。
+   换 `RegulatedPurePursuitController`（`use_rotate_to_heading: true`，拐角先原地对正
+   再前进）后迷宫成功。
+3. **Nav2 生命周期偶发激活超时**：同一 ROS_DOMAIN_ID 下残留旧 Gazebo/Nav2 进程会造成
+   TF 串扰（`Invalid frame ID "odom"`）、目标被拒。基准逐次起停，跑前需确认无残留
+   `gz sim` / `nav2_*` 进程。
+
 ## 已知限制
 
 - 本机用户不在 `video` / `render` 组，Gazebo GUI 退化为 llvmpipe 软件渲染（约 122% CPU），
@@ -220,3 +276,10 @@ torch / onnxruntime / tensorflow 均未安装；YOLOv8n 级模型 CPU 推理约
    下一步感知升级优先深度相机（详见步骤 13 评估）。
 5. v2.2 迷宫脱困不引入 Nav2 / 全局规划 —— 目的是验证"纯反应式视觉 + 雷达"的
    边界能力；贴墙跟随 + 开阔度选边已足够，且无需地图与定位。
+6. v3.0 用同一套指标横向比较反应式与 Nav2 —— 不追求"谁更好"，而是划清边界：
+   结构化短路线两者都能过，差距出现在需要全局信息的绕行与迷宫中。
+7. v3.0 全局规划器用 SmacPlanner2D 而非默认 NavFn —— NavFn 的路径长度上限约为
+   地图宽度 2 倍，长路线场景会静默返回空路径；局部控制器用 RPP 而非 DWB ——
+   1.1m 窄走廊下 DWB 的弧线采样找不到可行解，会退化成原地微转。
+8. v3.0 把 hybrid 做成"Nav2 + 近距视觉护栏"而不是端到端融合 —— 保持 Nav2 的
+   规划能力不变，只在安全层叠加视觉，便于单独度量护栏的收益与开销。

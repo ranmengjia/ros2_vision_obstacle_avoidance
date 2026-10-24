@@ -116,6 +116,25 @@ def fuse_scores(zone_scores, sector_dists, safety_distance,
     return tuple(fused)
 
 
+def lidar_zone_scores(sector_dists, full_clear_distance=1.0):
+    """雷达三扇区最小距离 → 三扇区可通行率（0~1）。
+
+    纯函数：不依赖 ROS。用于纯雷达消融臂（sensor_mode=lidar），
+    让 decide_command 的三阈值语义（clear/stop）在雷达空间下依然成立：
+      - 距离 >= full_clear_distance 或 inf（无回波）→ 1.0
+      - 距离 0 → 0.0，中间线性衰减
+    """
+    scores = []
+    for dist in sector_dists:
+        if not math.isfinite(dist):
+            scores.append(1.0)
+        elif full_clear_distance <= 0.0 or dist >= full_clear_distance:
+            scores.append(1.0)
+        else:
+            scores.append(max(0.0, dist / full_clear_distance))
+    return tuple(scores)
+
+
 def sector_distance(ranges, angle_min, angle_increment,
                     center_deg, width_deg=30.0):
     """取某个角度扇区内的最小距离（扇区以 center_deg 为中心、总宽 width_deg）。
@@ -351,6 +370,15 @@ class PerceptionNode(Node):
         self.max_angular_accel = self.get_parameter('max_angular_accel').value
         self.safety_timeout = self.get_parameter('safety_timeout').value
 
+        # ===== 传感器消融参数（v3.0 新增）=====
+        # sensor_mode = fused（默认，视觉+雷达）/ vision（纯 OpenCV）/ lidar（纯雷达）
+        self.declare_parameter('sensor_mode', 'fused')
+        self.sensor_mode = self.get_parameter('sensor_mode').value
+        if self.sensor_mode not in ('vision', 'lidar', 'fused'):
+            raise ValueError(
+                f'未知 sensor_mode: {self.sensor_mode}，'
+                '可选 vision / lidar / fused')
+
         # ===== 迷宫模式参数（v2.2 新增）=====
         # control_mode = reactive（默认，三扇区避障）/ maze（右手法则找出口）
         self.declare_parameter('control_mode', 'reactive')
@@ -450,11 +478,18 @@ class PerceptionNode(Node):
         vision_scores = compute_zone_scores(
             cv_img, self.gray_threshold, self.roi_bottom_ratio)
 
-        # 如果已有雷达数据，做融合；否则直接用视觉评分（降级行为）
-        if self.last_sector_dists is not None:
+        if self.sensor_mode == 'vision':
+            # 消融臂 A：纯视觉，完全不使用雷达数值
+            self.last_scores = vision_scores
+        elif self.sensor_mode == 'lidar':
+            # 消融臂 B：纯雷达，评分在 scan_callback 里更新
+            pass
+        elif self.last_sector_dists is not None:
+            # 默认融合臂：视觉 + 雷达安全闸门
             self.last_scores = fuse_scores(
                 vision_scores, self.last_sector_dists, self.safety_distance)
         else:
+            # 雷达还没就绪时的降级行为
             self.last_scores = vision_scores
 
         self.frame_count += 1
@@ -477,9 +512,10 @@ class PerceptionNode(Node):
             h, w = cv_img.shape[:2]
             dist_str = ('雷达 左={:.2f} 中={:.2f} 右={:.2f}'
                         .format(*(self.last_sector_dists or (0, 0, 0))))
+            scores = self.last_scores or vision_scores
             self.get_logger().info(
                 f'第 {self.frame_count} 帧 ({w}x{h}) 异常 {self.error_count} | '
-                f'融合后 左={self.last_scores[0]:.2f} 中={self.last_scores[1]:.2f} 右={self.last_scores[2]:.2f} | '
+                f'{self.sensor_mode} 左={scores[0]:.2f} 中={scores[1]:.2f} 右={scores[2]:.2f} | '
                 f'{dist_str} | '
                 f'FPS={fps:.1f} 延迟={avg_latency_ms:.0f}ms 耗时={avg_proc_ms:.1f}ms')
             self.fps_frames = 0
@@ -496,6 +532,10 @@ class PerceptionNode(Node):
             return
         self.last_sector_dists = sector_min_distances(
             msg.ranges, msg.angle_min, msg.angle_increment, self.scan_fov_deg)
+        if self.sensor_mode == 'lidar':
+            # 消融臂 B：纯雷达评分（视觉帧只用于日志/统计）
+            self.last_scores = lidar_zone_scores(
+                self.last_sector_dists, self.safety_distance * 2.0)
         if not self.lidar_seen_hit and any(
                 math.isfinite(r) and r > 0.0 for r in msg.ranges):
             # 出现过一次有限回波后就不再撤销：之后再全 inf 只能是真开阔
@@ -526,24 +566,29 @@ class PerceptionNode(Node):
         """10 Hz 控制循环：双看门狗（图像 + 雷达）+ 决策 + 发布。"""
         twist = Twist()
 
-        # 还没收到过图像：不发任何指令
-        if self.last_image_time is None:
+        # 纯雷达臂不依赖图像；其余模式必须等第一帧图像
+        if self.sensor_mode != 'lidar' and self.last_image_time is None:
+            return
+        # 纯雷达臂必须等第一帧雷达
+        if self.sensor_mode == 'lidar' and self.last_scan_time is None:
             return
 
         now = self.get_clock().now()
 
-        # 看门狗 1：图像超时
-        img_age = (now - self.last_image_time).nanoseconds / 1e9
+        # 看门狗：只检查当前传感器模式下真正依赖的数据源
+        img_age = (float('inf') if self.last_image_time is None
+                   else (now - self.last_image_time).nanoseconds / 1e9)
         scan_age = (float('inf') if self.last_scan_time is None
                     else (now - self.last_scan_time).nanoseconds / 1e9)
+        img_stale = self.sensor_mode != 'lidar' and img_age > self.safety_timeout
+        scan_stale = self.sensor_mode != 'vision' and scan_age > self.scan_timeout
 
-        # 雷达超时也触发安全停车——融合节点不能丢了雷达
-        if img_age > self.safety_timeout or scan_age > self.scan_timeout:
+        if img_stale or scan_stale:
             if not self.stopped_by_watchdog:
                 reason = []
-                if img_age > self.safety_timeout:
+                if img_stale:
                     reason.append(f'图像 {img_age:.1f}s')
-                if scan_age > self.scan_timeout:
+                if scan_stale:
                     reason.append(f'雷达 {scan_age:.1f}s')
                 self.get_logger().warn(
                     f'安全超时: {", ".join(reason)}，强制停车')
@@ -636,13 +681,15 @@ class PerceptionNode(Node):
 
     def reactive_control_loop(self, twist: Twist):
         """原有的三扇区视觉 + 雷达反应式避障。"""
+        # 纯视觉消融臂不把雷达数据交给决策（也不启用侧身护卫）
+        use_lidar = self.sensor_mode != 'vision'
         # 正常决策（self.last_scores 已在 image_callback 中融合完毕）
         action, self.turn_dir = decide_command(
             self.last_scores, self.turn_dir, self.prev_action,
             self.clear_threshold, self.stop_threshold,
             self.hysteresis_margin, self.straight_exit_margin,
             self.stop_exit_margin,
-            sector_dists=self.last_sector_dists,
+            sector_dists=self.last_sector_dists if use_lidar else None,
             side_guard_distance=self.side_guard_distance)
         self.prev_action = action
 

@@ -1,0 +1,44 @@
+{
+  "success": true,
+  "reach_time_sec": 92.072,
+  "traveled_m": 17.666,
+  "final_distance_m": 0.385,
+  "final_pose": [
+    2.917,
+    -1.242
+  ],
+  "min_clearance_m": 0.41,
+  "collision_count": 0,
+  "stopped_fraction": 0.018,
+  "angular_reversals": 24,
+  "angular_jerk": 7.083,
+  "sim_duration_sec": 92.07,
+  "wall_duration_sec": 104.55,
+  "cpu_time_ratio": 3.213,
+  "samples": {
+    "poses": 2709,
+    "scans": 920,
+    "cmds": 1848
+  },
+  "failure": null,
+  "scenario": "maze_course",
+  "arm": "hybrid",
+  "run": 1,
+  "kind": "hybrid",
+  "goal": [
+    3.3,
+    -1.2
+  ],
+  "goal_odom": [
+    3.3,
+    -1.2
+  ],
+  "goal_tolerance": 0.35,
+  "lane_tolerance": 1.2,
+  "spawn": [
+    0.0,
+    0.0,
+    0.0
+  ],
+  "world": "maze_course.world"
+}

@@ -32,6 +32,9 @@ def generate_launch_description():
         launch_arguments={
             'world_name': LaunchConfiguration('world_name'),
             'headless': LaunchConfiguration('headless'),
+            'spawn_x': LaunchConfiguration('spawn_x'),
+            'spawn_y': LaunchConfiguration('spawn_y'),
+            'spawn_yaw': LaunchConfiguration('spawn_yaw'),
         }.items(),
     )
 
@@ -93,6 +96,18 @@ def generate_launch_description():
             'headless',
             default_value='false',
             description='true 时 Gazebo 以无界面服务器模式运行'),
+        DeclareLaunchArgument(
+            'spawn_x',
+            default_value='-2.0',
+            description='机器人生成位置的 x（米），需与地图及 AMCL 初始位姿一致'),
+        DeclareLaunchArgument(
+            'spawn_y',
+            default_value='0.0',
+            description='机器人生成位置的 y（米），需与 AMCL 初始位姿一致'),
+        DeclareLaunchArgument(
+            'spawn_yaw',
+            default_value='0.0',
+            description='机器人生成时的朝向 yaw（弧度）'),
         simulation,
         rviz,
         nav2_delayed,

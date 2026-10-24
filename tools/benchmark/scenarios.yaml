@@ -1,0 +1,60 @@
+# 对比基准的场景矩阵
+#
+# 每个场景对应一个 Gazebo world + 一个固定起点/终点。
+# arms 里列出的臂只在该场景运行：
+#   vision = 纯 OpenCV 三扇区（无雷达）
+#   lidar  = 纯雷达三扇区（无视觉）
+#   fused  = 视觉 + 雷达融合（项目默认）
+#   nav2   = 先验地图 + AMCL + SmacPlanner2D + RPP（无视觉）
+#   hybrid = Nav2 全局规划 + OpenCV 近距安全护栏（视觉兜底）
+#
+# spawn: [x, y, yaw]；goal: [x, y]；goal_tolerance 单位米。
+# maze 场景的终点在迷宫东侧出口外，reactive 臂靠贴墙逻辑自行走出。
+
+defaults:
+  timeout_sec: 90
+  goal_tolerance: 0.4
+  # 反应式臂不收敛到点：越过终点线且横向偏差 ≤ 该值也算到达
+  lane_tolerance: 1.2
+  settle_sec: 4.0
+  arms: [vision, lidar, fused, nav2]
+
+scenarios:
+  - id: detour_test
+    description: 单个 0.5m 方块挡在直行路径中央，需绕行后继续前进
+    world: detour_test.world
+    spawn: [-2.0, 0.0, 0.0]
+    goal: [2.5, 0.0]
+    goal_tolerance: 0.35
+    arms: [vision, lidar, fused, nav2, hybrid]
+
+  - id: obstacle_course
+    description: 三个错位障碍箱（0.3~0.5m），正常光照
+    world: obstacle_course.world
+    spawn: [-2.0, 0.0, 0.0]
+    goal: [3.3, 0.0]
+    arms: [vision, lidar, fused, nav2, hybrid]
+
+  - id: low_contrast_course
+    description: 与 obstacle_course 同布局，地面与障碍对比度低
+    world: low_contrast_course.world
+    spawn: [-2.0, 0.0, 0.0]
+    goal: [3.3, 0.0]
+    arms: [vision, fused, nav2]
+
+  - id: dim_course
+    description: 与 obstacle_course 同布局，整体光照很暗
+    world: dim_course.world
+    spawn: [-2.0, 0.0, 0.0]
+    goal: [3.3, 0.0]
+    arms: [vision, fused, nav2]
+
+  - id: maze_course
+    description: 5x5 迷宫，无先验地图，需自主找到东侧出口
+    world: maze_course.world
+    spawn: [0.0, 0.0, 0.0]
+    goal: [3.3, -1.2]
+    goal_tolerance: 0.35
+    timeout_sec: 240
+    control_mode: maze
+    arms: [lidar, fused, nav2, hybrid]

@@ -13,6 +13,7 @@ from vision_perception.perception_node import (
     sector_max_distance,
     maze_command,
     fuse_scores,
+    lidar_zone_scores,
 )
 
 W, H = 320, 240
@@ -594,3 +595,38 @@ def test_maze_full_speed_when_clear():
     """前方开阔、视觉通畅 → 正常巡航速度。"""
     _, v, _ = maze(2.0, 3.0, 0.6, vision=1.0)
     assert v == pytest.approx(MAZE['linear_speed'])
+
+
+# ========== lidar_zone_scores：纯雷达消融臂的评分映射（v3.0） ==========
+
+def test_lidar_scores_all_inf_is_clear():
+    """无回波（inf）视为完全可通行。"""
+    assert lidar_zone_scores(
+        (float('inf'), float('inf'), float('inf')), 1.0) == pytest.approx((1.0, 1.0, 1.0))
+
+
+def test_lidar_scores_beyond_clear_distance_saturates():
+    """超过全通距离后饱和到 1.0，不会超过 1。"""
+    assert lidar_zone_scores((2.0, 5.0, 1.0), 1.0) == pytest.approx((1.0, 1.0, 1.0))
+
+
+def test_lidar_scores_linear_in_between():
+    """全通距离内线性衰减：0.5m / 1.0m → 0.5。"""
+    assert lidar_zone_scores((0.5, 0.25, 0.0), 1.0) == pytest.approx((0.5, 0.25, 0.0))
+
+
+def test_lidar_scores_zero_distance_blocks():
+    """贴墙 0m → 完全不可通行。"""
+    assert lidar_zone_scores((0.0, 0.0, 0.0), 1.0) == pytest.approx((0.0, 0.0, 0.0))
+
+
+def test_lidar_scores_nan_treated_as_clear():
+    """NaN（无效回波）按无障碍处理，避免误判为贴墙。"""
+    scores = lidar_zone_scores((float('nan'), 0.5, float('inf')), 1.0)
+    assert scores[0] == pytest.approx(1.0)
+    assert scores[1] == pytest.approx(0.5)
+
+
+def test_lidar_scores_bad_clear_distance_falls_back_to_one():
+    """全通距离配置为 0 时不应除零，直接视为全通。"""
+    assert lidar_zone_scores((0.0, 0.5, 1.0), 0.0) == pytest.approx((1.0, 1.0, 1.0))

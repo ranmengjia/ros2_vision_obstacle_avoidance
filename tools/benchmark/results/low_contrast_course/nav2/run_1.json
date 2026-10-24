@@ -1,0 +1,44 @@
+{
+  "success": true,
+  "reach_time_sec": 25.024,
+  "traveled_m": 4.918,
+  "final_distance_m": 0.425,
+  "final_pose": [
+    4.901,
+    -0.148
+  ],
+  "min_clearance_m": 0.471,
+  "collision_count": 0,
+  "stopped_fraction": 0.0,
+  "angular_reversals": 7,
+  "angular_jerk": 8.695,
+  "sim_duration_sec": 25.02,
+  "wall_duration_sec": 36.95,
+  "cpu_time_ratio": 2.766,
+  "samples": {
+    "poses": 737,
+    "scans": 251,
+    "cmds": 502
+  },
+  "failure": null,
+  "scenario": "low_contrast_course",
+  "arm": "nav2",
+  "run": 1,
+  "kind": "nav2",
+  "goal": [
+    3.3,
+    0.0
+  ],
+  "goal_odom": [
+    5.3,
+    0.0
+  ],
+  "goal_tolerance": 0.4,
+  "lane_tolerance": 1.2,
+  "spawn": [
+    -2.0,
+    0.0,
+    0.0
+  ],
+  "world": "low_contrast_course.world"
+}

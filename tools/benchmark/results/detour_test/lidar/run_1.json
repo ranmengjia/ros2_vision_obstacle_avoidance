@@ -1,0 +1,44 @@
+{
+  "success": true,
+  "reach_time_sec": 54.604,
+  "traveled_m": 9.526,
+  "final_distance_m": 1.545,
+  "final_pose": [
+    5.479,
+    -1.196
+  ],
+  "min_clearance_m": 0.143,
+  "collision_count": 0,
+  "stopped_fraction": 0.0,
+  "angular_reversals": 1,
+  "angular_jerk": 2.544,
+  "sim_duration_sec": 54.6,
+  "wall_duration_sec": 62.96,
+  "cpu_time_ratio": 2.092,
+  "samples": {
+    "poses": 1607,
+    "scans": 546,
+    "cmds": 536
+  },
+  "failure": null,
+  "scenario": "detour_test",
+  "arm": "lidar",
+  "run": 1,
+  "kind": "reactive",
+  "goal": [
+    2.5,
+    0.0
+  ],
+  "goal_odom": [
+    4.5,
+    0.0
+  ],
+  "goal_tolerance": 0.35,
+  "lane_tolerance": 1.2,
+  "spawn": [
+    -2.0,
+    0.0,
+    0.0
+  ],
+  "world": "detour_test.world"
+}

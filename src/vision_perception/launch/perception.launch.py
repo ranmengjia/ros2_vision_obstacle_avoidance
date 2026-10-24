@@ -15,6 +15,8 @@ def generate_launch_description():
 
     # control_mode := reactive（三扇区视觉+雷达避障）/ maze（右手法则走出迷宫）
     control_mode = LaunchConfiguration('control_mode')
+    # sensor_mode := fused（视觉+雷达）/ vision（纯 OpenCV）/ lidar（纯雷达）
+    sensor_mode = LaunchConfiguration('sensor_mode')
 
     return LaunchDescription([
         DeclareLaunchArgument(
@@ -22,11 +24,19 @@ def generate_launch_description():
             default_value='reactive',
             description='reactive：三扇区避障；maze：右手法则找迷宫出口',
         ),
+        DeclareLaunchArgument(
+            'sensor_mode',
+            default_value='fused',
+            description='fused：视觉+雷达；vision：纯视觉消融；lidar：纯雷达消融',
+        ),
         Node(
             package='vision_perception',
             executable='perception_node',
             name='perception_node',
-            parameters=[param_path, {'control_mode': control_mode}],
+            parameters=[param_path, {
+                'control_mode': control_mode,
+                'sensor_mode': sensor_mode,
+            }],
             output='screen',
         ),
     ])

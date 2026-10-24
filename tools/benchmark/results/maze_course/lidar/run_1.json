@@ -1,0 +1,44 @@
+{
+  "success": true,
+  "reach_time_sec": 154.224,
+  "traveled_m": 22.18,
+  "final_distance_m": 1.146,
+  "final_pose": [
+    2.6,
+    -2.107
+  ],
+  "min_clearance_m": 0.164,
+  "collision_count": 0,
+  "stopped_fraction": 0.178,
+  "angular_reversals": 50,
+  "angular_jerk": 4.937,
+  "sim_duration_sec": 154.22,
+  "wall_duration_sec": 175.08,
+  "cpu_time_ratio": 2.71,
+  "samples": {
+    "poses": 4537,
+    "scans": 1542,
+    "cmds": 1532
+  },
+  "failure": null,
+  "scenario": "maze_course",
+  "arm": "lidar",
+  "run": 1,
+  "kind": "reactive",
+  "goal": [
+    3.3,
+    -1.2
+  ],
+  "goal_odom": [
+    3.3,
+    -1.2
+  ],
+  "goal_tolerance": 0.35,
+  "lane_tolerance": 1.2,
+  "spawn": [
+    0.0,
+    0.0,
+    0.0
+  ],
+  "world": "maze_course.world"
+}

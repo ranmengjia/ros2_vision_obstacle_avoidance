@@ -21,6 +21,10 @@ perception_node:
     # 侧身护卫：直行时任一侧雷达距离小于此值则禁止直行（防止贴障擦边卡死）
     side_guard_distance: 0.25
 
+    # ===== 传感器消融（v3.0）=====
+    # fused：视觉 + 雷达融合（默认）；vision：纯 OpenCV；lidar：纯雷达
+    sensor_mode: fused
+
     # ===== 迷宫模式（control_mode: maze）=====
     # reactive（默认）：视觉 + 雷达三扇区反应式避障
     # maze：只用雷达前/左前/右前三个距离 + 左右两侧最远距离 + 视觉中路评分，

@@ -216,12 +216,16 @@ torch / onnxruntime / tensorflow 均未安装；YOLOv8n 级模型 CPU 推理约
   - `obstacle_course`：直线障碍，测"能不能避"；
   - `low_contrast_course` / `dim_course`：弱光与低对比度，测视觉退化；
   - `maze_course`：5×5 迷宫，测"只有局部观测时的长程脱困"。
-- 五条臂（`--arm`）：
+- 五条臂（`--arm`），覆盖五种传感器×规划的组合：
   - `vision`（纯 OpenCV）、`lidar`（纯雷达）、`fused`（视觉+雷达，默认）
-    —— 三条反应式臂共用 `perception_node` 的 `sensor_mode` 消融；
-  - `nav2`：先验地图 + AMCL + SmacPlanner2D + RPP，由脚本用 `NavigateToPose` 下发目标；
-  - `hybrid`：Nav2 的 `collision_monitor` 输出改名 `cmd_vel_raw`，`vision_guard.py`
-    订阅相机、正前方过近时覆盖为降速/转向，验证"规划 + 视觉兜底"。
+    —— 三条反应式臂共用 `perception_node` 的 `sensor_mode` 消融，无地图、无规划；
+  - `nav2`（= **Nav2 + 雷达**）：先验地图 + AMCL + SmacPlanner2D + RPP，
+    由脚本用 `NavigateToPose` 下发目标；雷达是 Nav2 的默认感知（代价地图 + AMCL 都靠 `/scan`）；
+  - `hybrid`（= **Nav2 + OpenCV**）：Nav2 的 `collision_monitor` 输出改名 `cmd_vel_raw`，
+    `vision_guard.py` 订阅相机、正前方过近时覆盖为降速/转向，验证"规划 + 视觉兜底"。
+- 命名上没有单独叫"Nav2+雷达"/"Nav2+OpenCV"，因为雷达已经内嵌在 Nav2 里，
+  而 OpenCV 护栏就是 hybrid 的本质；五条臂恰好对应：纯 OpenCV / 纯雷达 /
+  OpenCV+雷达（反应式）/ Nav2+雷达 / Nav2+OpenCV。
 - 指标（`tools/benchmark/metrics.py`，38 条单测）：成功率、到达时间、路程、
   最小雷达间距、碰撞次数、卡死占比、角速度 jerk、CPU 占比、失败归因。
 - 到达判定：Nav2 臂用终点容差圆；反应式臂不收敛到点，额外接受

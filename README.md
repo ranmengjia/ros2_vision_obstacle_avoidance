@@ -109,8 +109,12 @@ ros2 launch robot_description simulation.launch.py headless:=true world_name:=di
 | `vision` | OpenCV 掩膜 → 左/中/右评分 | 纯反应式，无地图、无定位 |
 | `lidar` | 雷达三扇区 | 只验证视觉在感知中的贡献 |
 | `fused` | 视觉 + 雷达安全闸门 | 项目默认臂 |
-| `nav2` | AMCL + SmacPlanner2D + RPP | 先验地图 + 全局规划 |
+| `nav2` | AMCL + SmacPlanner2D + RPP | 先验地图 + 全局规划；**雷达已是 Nav2 默认感知**（代价地图由 `/scan` 生成） |
 | `hybrid` | Nav2 输出 → OpenCV 近距护栏 | Nav2 的 `/cmd_vel` 改走 `/cmd_vel_raw`，`vision_guard.py` 在正前方过近时接管降速/转向 |
+
+> 组合关系说明：`nav2` 臂本身就是 **Nav2 + 雷达**（Nav2 必须靠雷达建代价地图和 AMCL 定位）；
+> `hybrid` 臂就是 **Nav2 + OpenCV**（在 Nav2 之上叠加一层视觉护栏）。因此五条臂已覆盖
+> "纯 OpenCV / 纯雷达 / OpenCV+雷达（反应式） / Nav2+雷达 / Nav2+OpenCV"五种组合。
 
 ```bash
 # 全量（5 场景 × 各场景配置的臂），自动起停 Gazebo/Nav2 并采集指标

@@ -1,0 +1,7 @@
+# 由 tools/benchmark/generate_maps.py 从 world 自动生成
+image: low_contrast_course_map.pgm
+resolution: 0.05
+origin: [-4.550, -4.550, 0.0]
+negate: 0
+occupied_thresh: 0.65
+free_thresh: 0.25

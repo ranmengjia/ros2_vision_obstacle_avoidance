@@ -1,0 +1,1384 @@
+[
+  {
+    "scenario": "detour_test",
+    "arm": "fused",
+    "runs": 1,
+    "success_rate": 1.0,
+    "metrics": {
+      "reach_time_sec": {
+        "mean": 62.288000000000004,
+        "std": 0.0,
+        "min": 62.288000000000004,
+        "max": 62.288000000000004
+      },
+      "traveled_m": {
+        "mean": 9.928,
+        "std": 0.0,
+        "min": 9.928,
+        "max": 9.928
+      },
+      "final_distance_m": {
+        "mean": 1.811,
+        "std": 0.0,
+        "min": 1.811,
+        "max": 1.811
+      },
+      "min_clearance_m": {
+        "mean": 0.124,
+        "std": 0.0,
+        "min": 0.124,
+        "max": 0.124
+      },
+      "collision_count": {
+        "mean": 1.0,
+        "std": 0.0,
+        "min": 1,
+        "max": 1
+      },
+      "stopped_fraction": {
+        "mean": 0.104,
+        "std": 0.0,
+        "min": 0.104,
+        "max": 0.104
+      },
+      "angular_reversals": {
+        "mean": 1.0,
+        "std": 0.0,
+        "min": 1,
+        "max": 1
+      },
+      "angular_jerk": {
+        "mean": 5.064,
+        "std": 0.0,
+        "min": 5.064,
+        "max": 5.064
+      },
+      "sim_duration_sec": {
+        "mean": 62.29,
+        "std": 0.0,
+        "min": 62.29,
+        "max": 62.29
+      },
+      "cpu_time_ratio": {
+        "mean": 2.103,
+        "std": 0.0,
+        "min": 2.103,
+        "max": 2.103
+      }
+    },
+    "failures": []
+  },
+  {
+    "scenario": "detour_test",
+    "arm": "hybrid",
+    "runs": 1,
+    "success_rate": 1.0,
+    "metrics": {
+      "reach_time_sec": {
+        "mean": 23.323999999999998,
+        "std": 0.0,
+        "min": 23.323999999999998,
+        "max": 23.323999999999998
+      },
+      "traveled_m": {
+        "mean": 4.52,
+        "std": 0.0,
+        "min": 4.52,
+        "max": 4.52
+      },
+      "final_distance_m": {
+        "mean": 0.462,
+        "std": 0.0,
+        "min": 0.462,
+        "max": 0.462
+      },
+      "min_clearance_m": {
+        "mean": 0.461,
+        "std": 0.0,
+        "min": 0.461,
+        "max": 0.461
+      },
+      "collision_count": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "stopped_fraction": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "angular_reversals": {
+        "mean": 4.0,
+        "std": 0.0,
+        "min": 4,
+        "max": 4
+      },
+      "angular_jerk": {
+        "mean": 9.188,
+        "std": 0.0,
+        "min": 9.188,
+        "max": 9.188
+      },
+      "sim_duration_sec": {
+        "mean": 23.32,
+        "std": 0.0,
+        "min": 23.32,
+        "max": 23.32
+      },
+      "cpu_time_ratio": {
+        "mean": 2.845,
+        "std": 0.0,
+        "min": 2.845,
+        "max": 2.845
+      }
+    },
+    "failures": []
+  },
+  {
+    "scenario": "detour_test",
+    "arm": "lidar",
+    "runs": 1,
+    "success_rate": 1.0,
+    "metrics": {
+      "reach_time_sec": {
+        "mean": 54.604,
+        "std": 0.0,
+        "min": 54.604,
+        "max": 54.604
+      },
+      "traveled_m": {
+        "mean": 9.526,
+        "std": 0.0,
+        "min": 9.526,
+        "max": 9.526
+      },
+      "final_distance_m": {
+        "mean": 1.545,
+        "std": 0.0,
+        "min": 1.545,
+        "max": 1.545
+      },
+      "min_clearance_m": {
+        "mean": 0.143,
+        "std": 0.0,
+        "min": 0.143,
+        "max": 0.143
+      },
+      "collision_count": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "stopped_fraction": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "angular_reversals": {
+        "mean": 1.0,
+        "std": 0.0,
+        "min": 1,
+        "max": 1
+      },
+      "angular_jerk": {
+        "mean": 2.544,
+        "std": 0.0,
+        "min": 2.544,
+        "max": 2.544
+      },
+      "sim_duration_sec": {
+        "mean": 54.6,
+        "std": 0.0,
+        "min": 54.6,
+        "max": 54.6
+      },
+      "cpu_time_ratio": {
+        "mean": 2.092,
+        "std": 0.0,
+        "min": 2.092,
+        "max": 2.092
+      }
+    },
+    "failures": []
+  },
+  {
+    "scenario": "detour_test",
+    "arm": "nav2",
+    "runs": 1,
+    "success_rate": 1.0,
+    "metrics": {
+      "reach_time_sec": {
+        "mean": 23.086,
+        "std": 0.0,
+        "min": 23.086,
+        "max": 23.086
+      },
+      "traveled_m": {
+        "mean": 4.482,
+        "std": 0.0,
+        "min": 4.482,
+        "max": 4.482
+      },
+      "final_distance_m": {
+        "mean": 0.435,
+        "std": 0.0,
+        "min": 0.435,
+        "max": 0.435
+      },
+      "min_clearance_m": {
+        "mean": 0.417,
+        "std": 0.0,
+        "min": 0.417,
+        "max": 0.417
+      },
+      "collision_count": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "stopped_fraction": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "angular_reversals": {
+        "mean": 10.0,
+        "std": 0.0,
+        "min": 10,
+        "max": 10
+      },
+      "angular_jerk": {
+        "mean": 11.875,
+        "std": 0.0,
+        "min": 11.875,
+        "max": 11.875
+      },
+      "sim_duration_sec": {
+        "mean": 23.09,
+        "std": 0.0,
+        "min": 23.09,
+        "max": 23.09
+      },
+      "cpu_time_ratio": {
+        "mean": 2.807,
+        "std": 0.0,
+        "min": 2.807,
+        "max": 2.807
+      }
+    },
+    "failures": []
+  },
+  {
+    "scenario": "detour_test",
+    "arm": "vision",
+    "runs": 1,
+    "success_rate": 0.0,
+    "metrics": {
+      "reach_time_sec": {
+        "mean": null,
+        "std": null,
+        "min": null,
+        "max": null
+      },
+      "traveled_m": {
+        "mean": 8.31,
+        "std": 0.0,
+        "min": 8.31,
+        "max": 8.31
+      },
+      "final_distance_m": {
+        "mean": 4.24,
+        "std": 0.0,
+        "min": 4.24,
+        "max": 4.24
+      },
+      "min_clearance_m": {
+        "mean": 0.101,
+        "std": 0.0,
+        "min": 0.101,
+        "max": 0.101
+      },
+      "collision_count": {
+        "mean": 2.0,
+        "std": 0.0,
+        "min": 2,
+        "max": 2
+      },
+      "stopped_fraction": {
+        "mean": 0.472,
+        "std": 0.0,
+        "min": 0.472,
+        "max": 0.472
+      },
+      "angular_reversals": {
+        "mean": 1.0,
+        "std": 0.0,
+        "min": 1,
+        "max": 1
+      },
+      "angular_jerk": {
+        "mean": 2.39,
+        "std": 0.0,
+        "min": 2.39,
+        "max": 2.39
+      },
+      "sim_duration_sec": {
+        "mean": 87.96,
+        "std": 0.0,
+        "min": 87.96,
+        "max": 87.96
+      },
+      "cpu_time_ratio": {
+        "mean": 2.2,
+        "std": 0.0,
+        "min": 2.2,
+        "max": 2.2
+      }
+    },
+    "failures": [
+      "collision"
+    ]
+  },
+  {
+    "scenario": "dim_course",
+    "arm": "fused",
+    "runs": 1,
+    "success_rate": 1.0,
+    "metrics": {
+      "reach_time_sec": {
+        "mean": 26.043999999999997,
+        "std": 0.0,
+        "min": 26.043999999999997,
+        "max": 26.043999999999997
+      },
+      "traveled_m": {
+        "mean": 4.904,
+        "std": 0.0,
+        "min": 4.904,
+        "max": 4.904
+      },
+      "final_distance_m": {
+        "mean": 0.396,
+        "std": 0.0,
+        "min": 0.396,
+        "max": 0.396
+      },
+      "min_clearance_m": {
+        "mean": 0.3,
+        "std": 0.0,
+        "min": 0.3,
+        "max": 0.3
+      },
+      "collision_count": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "stopped_fraction": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "angular_reversals": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "angular_jerk": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "sim_duration_sec": {
+        "mean": 26.04,
+        "std": 0.0,
+        "min": 26.04,
+        "max": 26.04
+      },
+      "cpu_time_ratio": {
+        "mean": 1.928,
+        "std": 0.0,
+        "min": 1.928,
+        "max": 1.928
+      }
+    },
+    "failures": []
+  },
+  {
+    "scenario": "dim_course",
+    "arm": "nav2",
+    "runs": 1,
+    "success_rate": 1.0,
+    "metrics": {
+      "reach_time_sec": {
+        "mean": 25.092,
+        "std": 0.0,
+        "min": 25.092,
+        "max": 25.092
+      },
+      "traveled_m": {
+        "mean": 4.93,
+        "std": 0.0,
+        "min": 4.93,
+        "max": 4.93
+      },
+      "final_distance_m": {
+        "mean": 0.42,
+        "std": 0.0,
+        "min": 0.42,
+        "max": 0.42
+      },
+      "min_clearance_m": {
+        "mean": 0.461,
+        "std": 0.0,
+        "min": 0.461,
+        "max": 0.461
+      },
+      "collision_count": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "stopped_fraction": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "angular_reversals": {
+        "mean": 13.0,
+        "std": 0.0,
+        "min": 13,
+        "max": 13
+      },
+      "angular_jerk": {
+        "mean": 9.189,
+        "std": 0.0,
+        "min": 9.189,
+        "max": 9.189
+      },
+      "sim_duration_sec": {
+        "mean": 25.09,
+        "std": 0.0,
+        "min": 25.09,
+        "max": 25.09
+      },
+      "cpu_time_ratio": {
+        "mean": 2.84,
+        "std": 0.0,
+        "min": 2.84,
+        "max": 2.84
+      }
+    },
+    "failures": []
+  },
+  {
+    "scenario": "dim_course",
+    "arm": "vision",
+    "runs": 1,
+    "success_rate": 1.0,
+    "metrics": {
+      "reach_time_sec": {
+        "mean": 26.009999999999998,
+        "std": 0.0,
+        "min": 26.009999999999998,
+        "max": 26.009999999999998
+      },
+      "traveled_m": {
+        "mean": 4.904,
+        "std": 0.0,
+        "min": 4.904,
+        "max": 4.904
+      },
+      "final_distance_m": {
+        "mean": 0.396,
+        "std": 0.0,
+        "min": 0.396,
+        "max": 0.396
+      },
+      "min_clearance_m": {
+        "mean": 0.3,
+        "std": 0.0,
+        "min": 0.3,
+        "max": 0.3
+      },
+      "collision_count": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "stopped_fraction": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "angular_reversals": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "angular_jerk": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "sim_duration_sec": {
+        "mean": 26.01,
+        "std": 0.0,
+        "min": 26.01,
+        "max": 26.01
+      },
+      "cpu_time_ratio": {
+        "mean": 1.97,
+        "std": 0.0,
+        "min": 1.97,
+        "max": 1.97
+      }
+    },
+    "failures": []
+  },
+  {
+    "scenario": "low_contrast_course",
+    "arm": "fused",
+    "runs": 1,
+    "success_rate": 1.0,
+    "metrics": {
+      "reach_time_sec": {
+        "mean": 25.908,
+        "std": 0.0,
+        "min": 25.908,
+        "max": 25.908
+      },
+      "traveled_m": {
+        "mean": 4.903,
+        "std": 0.0,
+        "min": 4.903,
+        "max": 4.903
+      },
+      "final_distance_m": {
+        "mean": 0.397,
+        "std": 0.0,
+        "min": 0.397,
+        "max": 0.397
+      },
+      "min_clearance_m": {
+        "mean": 0.3,
+        "std": 0.0,
+        "min": 0.3,
+        "max": 0.3
+      },
+      "collision_count": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "stopped_fraction": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "angular_reversals": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "angular_jerk": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "sim_duration_sec": {
+        "mean": 25.91,
+        "std": 0.0,
+        "min": 25.91,
+        "max": 25.91
+      },
+      "cpu_time_ratio": {
+        "mean": 2.323,
+        "std": 0.0,
+        "min": 2.323,
+        "max": 2.323
+      }
+    },
+    "failures": []
+  },
+  {
+    "scenario": "low_contrast_course",
+    "arm": "nav2",
+    "runs": 1,
+    "success_rate": 1.0,
+    "metrics": {
+      "reach_time_sec": {
+        "mean": 25.024,
+        "std": 0.0,
+        "min": 25.024,
+        "max": 25.024
+      },
+      "traveled_m": {
+        "mean": 4.918,
+        "std": 0.0,
+        "min": 4.918,
+        "max": 4.918
+      },
+      "final_distance_m": {
+        "mean": 0.425,
+        "std": 0.0,
+        "min": 0.425,
+        "max": 0.425
+      },
+      "min_clearance_m": {
+        "mean": 0.471,
+        "std": 0.0,
+        "min": 0.471,
+        "max": 0.471
+      },
+      "collision_count": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "stopped_fraction": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "angular_reversals": {
+        "mean": 7.0,
+        "std": 0.0,
+        "min": 7,
+        "max": 7
+      },
+      "angular_jerk": {
+        "mean": 8.695,
+        "std": 0.0,
+        "min": 8.695,
+        "max": 8.695
+      },
+      "sim_duration_sec": {
+        "mean": 25.02,
+        "std": 0.0,
+        "min": 25.02,
+        "max": 25.02
+      },
+      "cpu_time_ratio": {
+        "mean": 2.766,
+        "std": 0.0,
+        "min": 2.766,
+        "max": 2.766
+      }
+    },
+    "failures": []
+  },
+  {
+    "scenario": "low_contrast_course",
+    "arm": "vision",
+    "runs": 1,
+    "success_rate": 1.0,
+    "metrics": {
+      "reach_time_sec": {
+        "mean": 25.806,
+        "std": 0.0,
+        "min": 25.806,
+        "max": 25.806
+      },
+      "traveled_m": {
+        "mean": 4.903,
+        "std": 0.0,
+        "min": 4.903,
+        "max": 4.903
+      },
+      "final_distance_m": {
+        "mean": 0.397,
+        "std": 0.0,
+        "min": 0.397,
+        "max": 0.397
+      },
+      "min_clearance_m": {
+        "mean": 0.3,
+        "std": 0.0,
+        "min": 0.3,
+        "max": 0.3
+      },
+      "collision_count": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "stopped_fraction": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "angular_reversals": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "angular_jerk": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "sim_duration_sec": {
+        "mean": 25.81,
+        "std": 0.0,
+        "min": 25.81,
+        "max": 25.81
+      },
+      "cpu_time_ratio": {
+        "mean": 2.151,
+        "std": 0.0,
+        "min": 2.151,
+        "max": 2.151
+      }
+    },
+    "failures": []
+  },
+  {
+    "scenario": "maze_course",
+    "arm": "fused",
+    "runs": 1,
+    "success_rate": 1.0,
+    "metrics": {
+      "reach_time_sec": {
+        "mean": 153.91799999999998,
+        "std": 0.0,
+        "min": 153.91799999999998,
+        "max": 153.91799999999998
+      },
+      "traveled_m": {
+        "mean": 22.211,
+        "std": 0.0,
+        "min": 22.211,
+        "max": 22.211
+      },
+      "final_distance_m": {
+        "mean": 1.033,
+        "std": 0.0,
+        "min": 1.033,
+        "max": 1.033
+      },
+      "min_clearance_m": {
+        "mean": 0.15,
+        "std": 0.0,
+        "min": 0.15,
+        "max": 0.15
+      },
+      "collision_count": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "stopped_fraction": {
+        "mean": 0.177,
+        "std": 0.0,
+        "min": 0.177,
+        "max": 0.177
+      },
+      "angular_reversals": {
+        "mean": 49.0,
+        "std": 0.0,
+        "min": 49,
+        "max": 49
+      },
+      "angular_jerk": {
+        "mean": 4.883,
+        "std": 0.0,
+        "min": 4.883,
+        "max": 4.883
+      },
+      "sim_duration_sec": {
+        "mean": 153.92,
+        "std": 0.0,
+        "min": 153.92,
+        "max": 153.92
+      },
+      "cpu_time_ratio": {
+        "mean": 2.696,
+        "std": 0.0,
+        "min": 2.696,
+        "max": 2.696
+      }
+    },
+    "failures": []
+  },
+  {
+    "scenario": "maze_course",
+    "arm": "hybrid",
+    "runs": 1,
+    "success_rate": 1.0,
+    "metrics": {
+      "reach_time_sec": {
+        "mean": 92.072,
+        "std": 0.0,
+        "min": 92.072,
+        "max": 92.072
+      },
+      "traveled_m": {
+        "mean": 17.666,
+        "std": 0.0,
+        "min": 17.666,
+        "max": 17.666
+      },
+      "final_distance_m": {
+        "mean": 0.385,
+        "std": 0.0,
+        "min": 0.385,
+        "max": 0.385
+      },
+      "min_clearance_m": {
+        "mean": 0.41,
+        "std": 0.0,
+        "min": 0.41,
+        "max": 0.41
+      },
+      "collision_count": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "stopped_fraction": {
+        "mean": 0.018,
+        "std": 0.0,
+        "min": 0.018,
+        "max": 0.018
+      },
+      "angular_reversals": {
+        "mean": 24.0,
+        "std": 0.0,
+        "min": 24,
+        "max": 24
+      },
+      "angular_jerk": {
+        "mean": 7.083,
+        "std": 0.0,
+        "min": 7.083,
+        "max": 7.083
+      },
+      "sim_duration_sec": {
+        "mean": 92.07,
+        "std": 0.0,
+        "min": 92.07,
+        "max": 92.07
+      },
+      "cpu_time_ratio": {
+        "mean": 3.213,
+        "std": 0.0,
+        "min": 3.213,
+        "max": 3.213
+      }
+    },
+    "failures": []
+  },
+  {
+    "scenario": "maze_course",
+    "arm": "lidar",
+    "runs": 1,
+    "success_rate": 1.0,
+    "metrics": {
+      "reach_time_sec": {
+        "mean": 154.224,
+        "std": 0.0,
+        "min": 154.224,
+        "max": 154.224
+      },
+      "traveled_m": {
+        "mean": 22.18,
+        "std": 0.0,
+        "min": 22.18,
+        "max": 22.18
+      },
+      "final_distance_m": {
+        "mean": 1.146,
+        "std": 0.0,
+        "min": 1.146,
+        "max": 1.146
+      },
+      "min_clearance_m": {
+        "mean": 0.164,
+        "std": 0.0,
+        "min": 0.164,
+        "max": 0.164
+      },
+      "collision_count": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "stopped_fraction": {
+        "mean": 0.178,
+        "std": 0.0,
+        "min": 0.178,
+        "max": 0.178
+      },
+      "angular_reversals": {
+        "mean": 50.0,
+        "std": 0.0,
+        "min": 50,
+        "max": 50
+      },
+      "angular_jerk": {
+        "mean": 4.937,
+        "std": 0.0,
+        "min": 4.937,
+        "max": 4.937
+      },
+      "sim_duration_sec": {
+        "mean": 154.22,
+        "std": 0.0,
+        "min": 154.22,
+        "max": 154.22
+      },
+      "cpu_time_ratio": {
+        "mean": 2.71,
+        "std": 0.0,
+        "min": 2.71,
+        "max": 2.71
+      }
+    },
+    "failures": []
+  },
+  {
+    "scenario": "maze_course",
+    "arm": "nav2",
+    "runs": 1,
+    "success_rate": 1.0,
+    "metrics": {
+      "reach_time_sec": {
+        "mean": 92.684,
+        "std": 0.0,
+        "min": 92.684,
+        "max": 92.684
+      },
+      "traveled_m": {
+        "mean": 17.707,
+        "std": 0.0,
+        "min": 17.707,
+        "max": 17.707
+      },
+      "final_distance_m": {
+        "mean": 0.435,
+        "std": 0.0,
+        "min": 0.435,
+        "max": 0.435
+      },
+      "min_clearance_m": {
+        "mean": 0.411,
+        "std": 0.0,
+        "min": 0.411,
+        "max": 0.411
+      },
+      "collision_count": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "stopped_fraction": {
+        "mean": 0.017,
+        "std": 0.0,
+        "min": 0.017,
+        "max": 0.017
+      },
+      "angular_reversals": {
+        "mean": 22.0,
+        "std": 0.0,
+        "min": 22,
+        "max": 22
+      },
+      "angular_jerk": {
+        "mean": 11.803,
+        "std": 0.0,
+        "min": 11.803,
+        "max": 11.803
+      },
+      "sim_duration_sec": {
+        "mean": 92.68,
+        "std": 0.0,
+        "min": 92.68,
+        "max": 92.68
+      },
+      "cpu_time_ratio": {
+        "mean": 2.991,
+        "std": 0.0,
+        "min": 2.991,
+        "max": 2.991
+      }
+    },
+    "failures": []
+  },
+  {
+    "scenario": "obstacle_course",
+    "arm": "fused",
+    "runs": 1,
+    "success_rate": 1.0,
+    "metrics": {
+      "reach_time_sec": {
+        "mean": 25.976,
+        "std": 0.0,
+        "min": 25.976,
+        "max": 25.976
+      },
+      "traveled_m": {
+        "mean": 4.902,
+        "std": 0.0,
+        "min": 4.902,
+        "max": 4.902
+      },
+      "final_distance_m": {
+        "mean": 0.398,
+        "std": 0.0,
+        "min": 0.398,
+        "max": 0.398
+      },
+      "min_clearance_m": {
+        "mean": 0.3,
+        "std": 0.0,
+        "min": 0.3,
+        "max": 0.3
+      },
+      "collision_count": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "stopped_fraction": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "angular_reversals": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "angular_jerk": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "sim_duration_sec": {
+        "mean": 25.98,
+        "std": 0.0,
+        "min": 25.98,
+        "max": 25.98
+      },
+      "cpu_time_ratio": {
+        "mean": 2.238,
+        "std": 0.0,
+        "min": 2.238,
+        "max": 2.238
+      }
+    },
+    "failures": []
+  },
+  {
+    "scenario": "obstacle_course",
+    "arm": "hybrid",
+    "runs": 1,
+    "success_rate": 1.0,
+    "metrics": {
+      "reach_time_sec": {
+        "mean": 25.16,
+        "std": 0.0,
+        "min": 25.16,
+        "max": 25.16
+      },
+      "traveled_m": {
+        "mean": 4.943,
+        "std": 0.0,
+        "min": 4.943,
+        "max": 4.943
+      },
+      "final_distance_m": {
+        "mean": 0.422,
+        "std": 0.0,
+        "min": 0.422,
+        "max": 0.422
+      },
+      "min_clearance_m": {
+        "mean": 0.452,
+        "std": 0.0,
+        "min": 0.452,
+        "max": 0.452
+      },
+      "collision_count": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "stopped_fraction": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "angular_reversals": {
+        "mean": 9.0,
+        "std": 0.0,
+        "min": 9,
+        "max": 9
+      },
+      "angular_jerk": {
+        "mean": 6.354,
+        "std": 0.0,
+        "min": 6.354,
+        "max": 6.354
+      },
+      "sim_duration_sec": {
+        "mean": 25.16,
+        "std": 0.0,
+        "min": 25.16,
+        "max": 25.16
+      },
+      "cpu_time_ratio": {
+        "mean": 2.88,
+        "std": 0.0,
+        "min": 2.88,
+        "max": 2.88
+      }
+    },
+    "failures": []
+  },
+  {
+    "scenario": "obstacle_course",
+    "arm": "lidar",
+    "runs": 1,
+    "success_rate": 1.0,
+    "metrics": {
+      "reach_time_sec": {
+        "mean": 25.84,
+        "std": 0.0,
+        "min": 25.84,
+        "max": 25.84
+      },
+      "traveled_m": {
+        "mean": 4.903,
+        "std": 0.0,
+        "min": 4.903,
+        "max": 4.903
+      },
+      "final_distance_m": {
+        "mean": 0.397,
+        "std": 0.0,
+        "min": 0.397,
+        "max": 0.397
+      },
+      "min_clearance_m": {
+        "mean": 0.3,
+        "std": 0.0,
+        "min": 0.3,
+        "max": 0.3
+      },
+      "collision_count": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "stopped_fraction": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "angular_reversals": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "angular_jerk": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "sim_duration_sec": {
+        "mean": 25.84,
+        "std": 0.0,
+        "min": 25.84,
+        "max": 25.84
+      },
+      "cpu_time_ratio": {
+        "mean": 2.371,
+        "std": 0.0,
+        "min": 2.371,
+        "max": 2.371
+      }
+    },
+    "failures": []
+  },
+  {
+    "scenario": "obstacle_course",
+    "arm": "nav2",
+    "runs": 1,
+    "success_rate": 1.0,
+    "metrics": {
+      "reach_time_sec": {
+        "mean": 25.092000000000002,
+        "std": 0.0,
+        "min": 25.092000000000002,
+        "max": 25.092000000000002
+      },
+      "traveled_m": {
+        "mean": 4.931,
+        "std": 0.0,
+        "min": 4.931,
+        "max": 4.931
+      },
+      "final_distance_m": {
+        "mean": 0.424,
+        "std": 0.0,
+        "min": 0.424,
+        "max": 0.424
+      },
+      "min_clearance_m": {
+        "mean": 0.469,
+        "std": 0.0,
+        "min": 0.469,
+        "max": 0.469
+      },
+      "collision_count": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "stopped_fraction": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "angular_reversals": {
+        "mean": 13.0,
+        "std": 0.0,
+        "min": 13,
+        "max": 13
+      },
+      "angular_jerk": {
+        "mean": 9.776,
+        "std": 0.0,
+        "min": 9.776,
+        "max": 9.776
+      },
+      "sim_duration_sec": {
+        "mean": 25.09,
+        "std": 0.0,
+        "min": 25.09,
+        "max": 25.09
+      },
+      "cpu_time_ratio": {
+        "mean": 2.814,
+        "std": 0.0,
+        "min": 2.814,
+        "max": 2.814
+      }
+    },
+    "failures": []
+  },
+  {
+    "scenario": "obstacle_course",
+    "arm": "vision",
+    "runs": 1,
+    "success_rate": 1.0,
+    "metrics": {
+      "reach_time_sec": {
+        "mean": 25.942,
+        "std": 0.0,
+        "min": 25.942,
+        "max": 25.942
+      },
+      "traveled_m": {
+        "mean": 4.903,
+        "std": 0.0,
+        "min": 4.903,
+        "max": 4.903
+      },
+      "final_distance_m": {
+        "mean": 0.397,
+        "std": 0.0,
+        "min": 0.397,
+        "max": 0.397
+      },
+      "min_clearance_m": {
+        "mean": 0.3,
+        "std": 0.0,
+        "min": 0.3,
+        "max": 0.3
+      },
+      "collision_count": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "stopped_fraction": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "angular_reversals": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "angular_jerk": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "sim_duration_sec": {
+        "mean": 25.94,
+        "std": 0.0,
+        "min": 25.94,
+        "max": 25.94
+      },
+      "cpu_time_ratio": {
+        "mean": 2.395,
+        "std": 0.0,
+        "min": 2.395,
+        "max": 2.395
+      }
+    },
+    "failures": []
+  }
+]

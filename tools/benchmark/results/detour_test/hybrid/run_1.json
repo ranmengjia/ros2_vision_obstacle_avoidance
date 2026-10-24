@@ -1,0 +1,44 @@
+{
+  "success": true,
+  "reach_time_sec": 23.323999999999998,
+  "traveled_m": 4.52,
+  "final_distance_m": 0.462,
+  "final_pose": [
+    4.151,
+    0.303
+  ],
+  "min_clearance_m": 0.461,
+  "collision_count": 0,
+  "stopped_fraction": 0.0,
+  "angular_reversals": 4,
+  "angular_jerk": 9.188,
+  "sim_duration_sec": 23.32,
+  "wall_duration_sec": 34.93,
+  "cpu_time_ratio": 2.845,
+  "samples": {
+    "poses": 687,
+    "scans": 233,
+    "cmds": 467
+  },
+  "failure": null,
+  "scenario": "detour_test",
+  "arm": "hybrid",
+  "run": 1,
+  "kind": "hybrid",
+  "goal": [
+    2.5,
+    0.0
+  ],
+  "goal_odom": [
+    4.5,
+    0.0
+  ],
+  "goal_tolerance": 0.35,
+  "lane_tolerance": 1.2,
+  "spawn": [
+    -2.0,
+    0.0,
+    0.0
+  ],
+  "world": "detour_test.world"
+}

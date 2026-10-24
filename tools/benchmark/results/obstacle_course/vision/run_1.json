@@ -1,0 +1,44 @@
+{
+  "success": true,
+  "reach_time_sec": 25.942,
+  "traveled_m": 4.903,
+  "final_distance_m": 0.397,
+  "final_pose": [
+    4.903,
+    -0.0
+  ],
+  "min_clearance_m": 0.3,
+  "collision_count": 0,
+  "stopped_fraction": 0.0,
+  "angular_reversals": 0,
+  "angular_jerk": 0.0,
+  "sim_duration_sec": 25.94,
+  "wall_duration_sec": 35.95,
+  "cpu_time_ratio": 2.395,
+  "samples": {
+    "poses": 764,
+    "scans": 260,
+    "cmds": 250
+  },
+  "failure": null,
+  "scenario": "obstacle_course",
+  "arm": "vision",
+  "run": 1,
+  "kind": "reactive",
+  "goal": [
+    3.3,
+    0.0
+  ],
+  "goal_odom": [
+    5.3,
+    0.0
+  ],
+  "goal_tolerance": 0.4,
+  "lane_tolerance": 1.2,
+  "spawn": [
+    -2.0,
+    0.0,
+    0.0
+  ],
+  "world": "obstacle_course.world"
+}

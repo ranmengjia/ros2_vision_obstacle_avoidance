@@ -1,0 +1,44 @@
+{
+  "success": true,
+  "reach_time_sec": 25.092,
+  "traveled_m": 4.93,
+  "final_distance_m": 0.42,
+  "final_pose": [
+    4.903,
+    -0.139
+  ],
+  "min_clearance_m": 0.461,
+  "collision_count": 0,
+  "stopped_fraction": 0.0,
+  "angular_reversals": 13,
+  "angular_jerk": 9.189,
+  "sim_duration_sec": 25.09,
+  "wall_duration_sec": 36.9,
+  "cpu_time_ratio": 2.84,
+  "samples": {
+    "poses": 739,
+    "scans": 252,
+    "cmds": 503
+  },
+  "failure": null,
+  "scenario": "dim_course",
+  "arm": "nav2",
+  "run": 1,
+  "kind": "nav2",
+  "goal": [
+    3.3,
+    0.0
+  ],
+  "goal_odom": [
+    5.3,
+    0.0
+  ],
+  "goal_tolerance": 0.4,
+  "lane_tolerance": 1.2,
+  "spawn": [
+    -2.0,
+    0.0,
+    0.0
+  ],
+  "world": "dim_course.world"
+}

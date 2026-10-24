@@ -1,0 +1,44 @@
+{
+  "success": true,
+  "reach_time_sec": 23.086,
+  "traveled_m": 4.482,
+  "final_distance_m": 0.435,
+  "final_pose": [
+    4.156,
+    0.265
+  ],
+  "min_clearance_m": 0.417,
+  "collision_count": 0,
+  "stopped_fraction": 0.0,
+  "angular_reversals": 10,
+  "angular_jerk": 11.875,
+  "sim_duration_sec": 23.09,
+  "wall_duration_sec": 35.02,
+  "cpu_time_ratio": 2.807,
+  "samples": {
+    "poses": 680,
+    "scans": 231,
+    "cmds": 463
+  },
+  "failure": null,
+  "scenario": "detour_test",
+  "arm": "nav2",
+  "run": 1,
+  "kind": "nav2",
+  "goal": [
+    2.5,
+    0.0
+  ],
+  "goal_odom": [
+    4.5,
+    0.0
+  ],
+  "goal_tolerance": 0.35,
+  "lane_tolerance": 1.2,
+  "spawn": [
+    -2.0,
+    0.0,
+    0.0
+  ],
+  "world": "detour_test.world"
+}

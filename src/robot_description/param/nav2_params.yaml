@@ -1,4 +1,4 @@
-# Nav2 参数（ROS 2 Humble / Gazebo classic）
+# Nav2 参数（ROS 2 Jazzy / Gazebo Harmonic）
 # 机器人：0.30m × 0.20m 差速底盘，轮距 0.22m，最大线速度 0.2m/s
 # 雷达：/scan，360 线，0.1~8.0m，10Hz，frame=lidar_link
 
@@ -45,7 +45,7 @@ amcl:
     update_min_d: 0.25
 
     # 启动时直接给定初始位姿，避免必须先在 RViz 里点 2D Pose Estimate
-    # 必须与 simulation.launch.py 里 spawn_entity 的 -x/-y 保持一致
+    # 必须与 simulation.launch.py 里 ros_gz_sim create 的 -x/-y 保持一致
     set_initial_pose: True
     always_reset_initial_pose: False
     # 注意：这里是参数名 initial_pose.x，必须写成带点的扁平键，

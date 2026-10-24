@@ -1,5 +1,5 @@
-# SLAM Toolbox 参数（online_async 模式，ROS 2 Humble / Gazebo classic）
-# 基于 /opt/ros/humble/share/slam_toolbox/config/mapper_params_online_async.yaml，
+# SLAM Toolbox 参数（online_async 模式，ROS 2 Jazzy / Gazebo Harmonic）
+# 基于 /opt/ros/jazzy/share/slam_toolbox/config/mapper_params_online_async.yaml，
 # 针对本项目机器人和场地修改了 4 处，见下方注释。
 #
 # 原理一句话：SLAM Toolbox 订阅 /scan 和 odom->base_link 的 TF，

@@ -1,9 +1,31 @@
-# ROS2 视觉避障与可通行区域检测
+# ROS2 视觉避障组合对比
 
-基于 ROS 2 Jazzy + Gazebo Harmonic 8 的差速机器人避障学习项目：
-从单目 RGB 传统视觉基线起步，逐步加入 2D 激光雷达融合、Nav2 导航与 SLAM 在线建图。
+基于 ROS 2 Jazzy + Gazebo Harmonic 8 的差速机器人避障项目。不做功能堆叠，而是把
+5 种「传感器 × 规划」组合放进同一套场景与指标里横向对比，回答一个问题：
+**反应式到底够不够用，什么时候必须上 Nav2？**
 
-## 版本历程
+| 臂 | 感知 | 决策 | 特点 |
+|---|---|---|---|
+| `vision` | 单目 RGB | OpenCV 阈值 + 三扇区评分 | 最轻，但无测距 |
+| `lidar` | 2D 激光雷达 | 三扇区最小距离 | 有测距，无语义 |
+| `fused` | 相机 + 雷达 | 安全闸门融合（项目默认） | 全场景成功率 100% |
+| `nav2` | 雷达 | AMCL + SmacPlanner2D + RPP | 知道全局，路径最短 |
+| `hybrid` | 雷达 + 相机 | Nav2 + 视觉近距护栏 | 全局 + 兜底，CPU 最高 |
+
+三条结论（5 场景，每格 1 次）：
+
+- **结构化场景，五条臂都在 25s 左右**——反应式并不比 Nav2 慢；
+- **差距只出现在需要全局信息的地方**：绕行快 2.7×（23.1s vs 62.3s），
+  迷宫快 40%（92.7s vs 154.2s）；
+- **纯 OpenCV 唯一失败**：`detour_test` 碰撞 2 次，根因是相机 0.08m 高 +
+  ROI 只取底部 40% 造成的 0.34m 视觉盲区。
+
+![五臂基准：到达时间与路程](tools/benchmark/results/chart.png)
+
+> 当前基准每格仅 1 次，样本量不足以下强结论，扩到 3 次取均值是下一步；
+> 完整指标表见 [results/report.md](tools/benchmark/results/report.md)。
+
+## 演进路线
 
 | Tag | 版本 | 内容 |
 |---|---|---|
@@ -38,6 +60,7 @@ docs/
   experiments/          # v1.1 三场景 A/B 实验报告与数据
   decisions/            # 关键技术决策记录（ADR）
 tools/benchmark/        # v3.0 五臂基准：场景矩阵、指标采集、报告生成
+tools/eval/             # v1.1 三场景 A/B 会话记录与跑批脚本
 PLAN.md                 # 总体路线图与各版本验收记录
 ```
 
@@ -55,7 +78,7 @@ colcon build
 source install/setup.bash
 ```
 
-三种运行方式（注意：都会发布 `/cmd_vel`，同一时间只能跑一种）：
+四种运行方式（注意：都会发布 `/cmd_vel`，同一时间只能跑一种）：
 
 ```bash
 # 1) 视觉+雷达融合避障演示（两个终端）
@@ -99,10 +122,9 @@ ros2 launch robot_description simulation.launch.py headless:=true world_name:=di
 > `libEGL warning: failed to open /dev/dri/card*`，说明退化成 llvmpipe 软件渲染
 > （能显示但 CPU 占用高），把用户加入 `video`/`render` 组后重新登录即可。
 
-## 基准：OpenCV 反应式 vs Nav2
+## 基准套件：五条臂怎么跑
 
-`tools/benchmark/` 把「纯 OpenCV 反应式避障」和「Nav2 导航」放在同一套指标下比较，
-并额外提供两条消融/融合臂：
+`tools/benchmark/` 用统一的指标定义，把五种组合放在同一套场景矩阵下自动跑批：
 
 | 臂 | 决策方式 | 说明 |
 |---|---|---|
@@ -115,6 +137,13 @@ ros2 launch robot_description simulation.launch.py headless:=true world_name:=di
 > 组合关系说明：`nav2` 臂本身就是 **Nav2 + 雷达**（Nav2 必须靠雷达建代价地图和 AMCL 定位）；
 > `hybrid` 臂就是 **Nav2 + OpenCV**（在 Nav2 之上叠加一层视觉护栏）。因此五条臂已覆盖
 > "纯 OpenCV / 纯雷达 / OpenCV+雷达（反应式） / Nav2+雷达 / Nav2+OpenCV"五种组合。
+
+场景矩阵并非满格，缺的格子是有意为之：
+
+- `low_contrast_course` / `dim_course` 只跑 `vision`、`fused`、`nav2`：这两个场景是
+  为**消融视觉**设计的，纯雷达臂不受光照影响，跑进去只是重复 `obstacle_course` 的数据；
+- `maze_course` 不跑 `vision` 臂：迷宫判断路口需要测距，单目给不出距离，
+  该场景只用于比较"有测距"的三条臂。
 
 ```bash
 # 全量（5 场景 × 各场景配置的臂），自动起停 Gazebo/Nav2 并采集指标
@@ -152,7 +181,7 @@ python3 -m pytest tools/benchmark/test_metrics.py -v
 
 82 条单元测试覆盖：掩膜生成、三分评分、滞回决策、全受阻停车、
 雷达扇区映射、融合闸门、双看门狗、传感器消融、迷宫贴墙转向与出口判定等纯函数逻辑。
-另有 38 条基准指标单测（成功率判定、最小间距、碰撞计数、卡死占比、jerk）。
+另有 38 条基准指标单测（成功率判定、最小间距、碰撞计数、卡死占比、jerk），合计 120 条。
 
 ## 文档
 
